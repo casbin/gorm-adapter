@@ -1,4 +1,4 @@
-Gorm Adapter [![Godoc](https://godoc.org/github.com/casbin/gorm-adapter?status.svg)](https://godoc.org/github.com/casbin/gorm-adapter)
+Gorm Adapter [![Build Status](https://travis-ci.org/casbin/gorm-adapter.svg?branch=master)](https://travis-ci.org/casbin/gorm-adapter) [![Coverage Status](https://coveralls.io/repos/github/casbin/gorm-adapter/badge.svg?branch=master)](https://coveralls.io/github/casbin/gorm-adapter?branch=master) [![Godoc](https://godoc.org/github.com/casbin/gorm-adapter?status.svg)](https://godoc.org/github.com/casbin/gorm-adapter)
 ====
 
 Gorm Adapter is the [Gorm](https://github.com/jinzhu/gorm) adapter for [Casbin](https://github.com/casbin/casbin). With this library, Casbin can load policy from Gorm supported database or save policy to it.
