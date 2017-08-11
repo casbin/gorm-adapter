@@ -21,6 +21,7 @@ import (
 	"github.com/casbin/casbin/model"
 	"github.com/casbin/casbin/persist"
 	"github.com/jinzhu/gorm"
+	"github.com/lib/pq"
 )
 
 type Line struct {
@@ -37,6 +38,7 @@ type Line struct {
 type Adapter struct {
 	driverName     string
 	dataSourceName string
+	dbSpecified    bool
 	db             *gorm.DB
 }
 
@@ -46,10 +48,22 @@ func finalizer(a *Adapter) {
 }
 
 // NewAdapter is the constructor for Adapter.
-func NewAdapter(driverName string, dataSourceName string) *Adapter {
+// dbSpecified is an optional bool parameter. The default value is false.
+// It's up to whether you have specified an existing DB in dataSourceName.
+// If dbSpecified == true, you need to make sure the DB in dataSourceName exists.
+// If dbSpecified == false, the adapter will automatically create a DB named "casbin".
+func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) *Adapter {
 	a := &Adapter{}
 	a.driverName = driverName
 	a.dataSourceName = dataSourceName
+
+	if len(dbSpecified) == 0 {
+		a.dbSpecified = false
+	} else if len(dbSpecified) == 1 {
+		a.dbSpecified = dbSpecified[0]
+	} else {
+		panic(errors.New("invalid parameter: dbSpecified"))
+	}
 
 	// Open the DB, create it if not existed.
 	a.open()
@@ -61,26 +75,56 @@ func NewAdapter(driverName string, dataSourceName string) *Adapter {
 }
 
 func (a *Adapter) createDatabase() error {
-	db, err := gorm.Open(a.driverName, a.dataSourceName)
+	var err error
+	var db *gorm.DB
+	if a.driverName == "postgres" {
+		db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=postgres")
+	} else {
+		db, err = gorm.Open(a.driverName, a.dataSourceName)
+	}
 	if err != nil {
 		return err
 	}
 	defer db.Close()
 
-	err = db.Exec("CREATE DATABASE IF NOT EXISTS casbin").Error
+	if a.driverName == "postgres" {
+		if err = db.Exec("CREATE DATABASE casbin").Error; err != nil {
+			// 42P04 is	duplicate_database
+			if err.(*pq.Error).Code == "42P04" {
+				return nil
+			}
+		}
+	} else {
+		err = db.Exec("CREATE DATABASE IF NOT EXISTS casbin").Error
+	}
 	return err
 }
 
 func (a *Adapter) open() {
-	err := a.createDatabase()
-	if err != nil {
-		panic(err)
+	var err error
+	var db *gorm.DB
+
+	if a.dbSpecified {
+		db, err = gorm.Open(a.driverName, a.dataSourceName)
+		if err != nil {
+			panic(err)
+		}
+	} else {
+		if err = a.createDatabase(); err != nil {
+			panic(err)
+		}
+
+		if a.driverName == "postgres" {
+			db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=casbin")
+		} else {
+			db, err = gorm.Open(a.driverName, a.dataSourceName+"casbin")
+		}
+		if err != nil {
+			panic(err)
+		}
 	}
 
-	a.db, err = gorm.Open(a.driverName, a.dataSourceName+"casbin")
-	if err != nil {
-		panic(err)
-	}
+	a.db = db
 
 	a.createTable()
 }
