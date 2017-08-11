@@ -24,7 +24,7 @@ import (
 	"github.com/lib/pq"
 )
 
-type Line struct {
+type CasbinRule struct {
 	PType string `gorm:"size:100"`
 	V0    string `gorm:"size:100"`
 	V1    string `gorm:"size:100"`
@@ -135,24 +135,24 @@ func (a *Adapter) close() {
 }
 
 func (a *Adapter) createTable() {
-	if a.db.HasTable(&Line{}) {
+	if a.db.HasTable(&CasbinRule{}) {
 		return
 	}
 
-	err := a.db.CreateTable(&Line{}).Error
+	err := a.db.CreateTable(&CasbinRule{}).Error
 	if err != nil {
 		panic(err)
 	}
 }
 
 func (a *Adapter) dropTable() {
-	err := a.db.DropTable(&Line{}).Error
+	err := a.db.DropTable(&CasbinRule{}).Error
 	if err != nil {
 		panic(err)
 	}
 }
 
-func loadPolicyLine(line Line, model model.Model) {
+func loadPolicyLine(line CasbinRule, model model.Model) {
 	lineText := line.PType
 	if line.V0 != "" {
 		lineText += ", " + line.V0
@@ -178,7 +178,7 @@ func loadPolicyLine(line Line, model model.Model) {
 
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
-	var lines []Line
+	var lines []CasbinRule
 	err := a.db.Find(&lines).Error
 	if err != nil {
 		return err
@@ -191,8 +191,8 @@ func (a *Adapter) LoadPolicy(model model.Model) error {
 	return nil
 }
 
-func savePolicyLine(ptype string, rule []string) Line {
-	line := Line{}
+func savePolicyLine(ptype string, rule []string) CasbinRule {
+	line := CasbinRule{}
 
 	line.PType = ptype
 	if len(rule) > 0 {
