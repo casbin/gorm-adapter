@@ -34,6 +34,10 @@ type CasbinRule struct {
 	V5    string `gorm:"size:100"`
 }
 
+func (c *CasbinRule) TableName() string{
+	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
+}
+
 // Adapter represents the Gorm adapter for policy storage.
 type Adapter struct {
 	driverName     string
@@ -247,15 +251,81 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 // AddPolicy adds a policy rule to the storage.
 func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
-	return errors.New("not implemented")
+	line := savePolicyLine(ptype, rule)
+	err := a.db.Create(&line).Error
+	return err
 }
 
 // RemovePolicy removes a policy rule from the storage.
 func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
-	return errors.New("not implemented")
+	line := savePolicyLine(ptype, rule)
+	err := rawDelete(a.db, line) //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
+	return err
 }
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	return errors.New("not implemented")
+	line := CasbinRule{}
+
+	line.PType = ptype
+	if fieldIndex <= 0 && 0 < fieldIndex + len(fieldValues) {
+		line.V0 = fieldValues[0 - fieldIndex]
+	}
+	if fieldIndex <= 1 && 1 < fieldIndex + len(fieldValues) {
+		line.V1 = fieldValues[1 - fieldIndex]
+	}
+	if fieldIndex <= 2 && 2 < fieldIndex + len(fieldValues) {
+		line.V2 = fieldValues[2 - fieldIndex]
+	}
+	if fieldIndex <= 3 && 3 < fieldIndex + len(fieldValues) {
+		line.V3 = fieldValues[3 - fieldIndex]
+	}
+	if fieldIndex <= 4 && 4 < fieldIndex + len(fieldValues) {
+		line.V4 = fieldValues[4 - fieldIndex]
+	}
+	if fieldIndex <= 5 && 5 < fieldIndex + len(fieldValues) {
+		line.V5 = fieldValues[5 - fieldIndex]
+	}
+	err := rawDeleteAll(a.db, line)
+	return err
+}
+
+func rawDelete(db *gorm.DB, line CasbinRule) error {
+	err := db.Delete(CasbinRule{},"p_type = ? and v0 = ?" +
+		" and v1 = ? and v2 = ? and v3 = ? and v4 = ? and v5 = ?",
+		line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5).Error
+	return err
+}
+
+func rawDeleteAll(db *gorm.DB, line CasbinRule) error {
+	queryArgs := []interface{}{line.PType}
+
+	queryStr := "p_type = ?"
+	if line.V0 != "" {
+		queryStr += " and v0 = ?"
+		queryArgs = append(queryArgs, line.V0)
+	}
+	if line.V1 != "" {
+		queryStr += " and v1 = ?"
+		queryArgs = append(queryArgs, line.V1)
+	}
+	if line.V2 != "" {
+		queryStr += " and v2 = ?"
+		queryArgs = append(queryArgs, line.V2)
+	}
+	if line.V3 != "" {
+		queryStr += " and v3 = ?"
+		queryArgs = append(queryArgs, line.V3)
+	}
+	if line.V4 != "" {
+		queryStr += " and v4 = ?"
+		queryArgs = append(queryArgs, line.V4)
+	}
+	if line.V5 != "" {
+		queryStr += " and v5 = ?"
+		queryArgs = append(queryArgs, line.V5)
+	}
+	args := append([]interface{}{queryStr}, queryArgs...)
+	err := db.Delete(CasbinRule{}, args...).Error
+	return err
 }
