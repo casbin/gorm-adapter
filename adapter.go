@@ -98,7 +98,7 @@ func (a *Adapter) createDatabase() error {
 				return nil
 			}
 		}
-	} else {
+	} else if a.driverName != "sqlite3" {
 		err = db.Exec("CREATE DATABASE IF NOT EXISTS casbin").Error
 	}
 	return err
