@@ -34,7 +34,7 @@ type CasbinRule struct {
 	V5    string `gorm:"size:100"`
 }
 
-func (c *CasbinRule) TableName() string{
+func (c *CasbinRule) TableName() string {
 	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
 }
 
@@ -268,33 +268,37 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	line := CasbinRule{}
 
 	line.PType = ptype
-	if fieldIndex <= 0 && 0 < fieldIndex + len(fieldValues) {
-		line.V0 = fieldValues[0 - fieldIndex]
+	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
+		line.V0 = fieldValues[0-fieldIndex]
 	}
-	if fieldIndex <= 1 && 1 < fieldIndex + len(fieldValues) {
-		line.V1 = fieldValues[1 - fieldIndex]
+	if fieldIndex <= 1 && 1 < fieldIndex+len(fieldValues) {
+		line.V1 = fieldValues[1-fieldIndex]
 	}
-	if fieldIndex <= 2 && 2 < fieldIndex + len(fieldValues) {
-		line.V2 = fieldValues[2 - fieldIndex]
+	if fieldIndex <= 2 && 2 < fieldIndex+len(fieldValues) {
+		line.V2 = fieldValues[2-fieldIndex]
 	}
-	if fieldIndex <= 3 && 3 < fieldIndex + len(fieldValues) {
-		line.V3 = fieldValues[3 - fieldIndex]
+	if fieldIndex <= 3 && 3 < fieldIndex+len(fieldValues) {
+		line.V3 = fieldValues[3-fieldIndex]
 	}
-	if fieldIndex <= 4 && 4 < fieldIndex + len(fieldValues) {
-		line.V4 = fieldValues[4 - fieldIndex]
+	if fieldIndex <= 4 && 4 < fieldIndex+len(fieldValues) {
+		line.V4 = fieldValues[4-fieldIndex]
 	}
-	if fieldIndex <= 5 && 5 < fieldIndex + len(fieldValues) {
-		line.V5 = fieldValues[5 - fieldIndex]
+	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
+		line.V5 = fieldValues[5-fieldIndex]
 	}
 	err := rawDeleteAll(a.db, line)
 	return err
 }
 
 func rawDelete(db *gorm.DB, line CasbinRule) error {
-	err := db.Delete(CasbinRule{},"p_type = ? and v0 = ?" +
-		" and v1 = ? and v2 = ? and v3 = ? and v4 = ? and v5 = ?",
-		line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5).Error
-	return err
+	/*
+		err := db.Delete(CasbinRule{},"p_type = ? and v0 = ?" +
+			" and v1 = ? and v2 = ? and v3 = ? and v4 = ? and v5 = ?",
+			line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5).Error
+		return err
+	*/
+	// call rawDeleteAll, if line.V3/line.V4/line.v5 is "", then don't check them is the SQL.
+	return rawDeleteAll(db, line)
 }
 
 func rawDeleteAll(db *gorm.DB, line CasbinRule) error {
