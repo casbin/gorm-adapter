@@ -297,7 +297,7 @@ func rawDelete(db *gorm.DB, line CasbinRule) error {
 			line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5).Error
 		return err
 	*/
-	// call rawDeleteAll, if line.V3/line.V4/line.v5 is "", then don't check them is the SQL.
+	// call rawDeleteAll, if line.V3/line.V4/line.v5 is "", then don't check them in the SQL.
 	return rawDeleteAll(db, line)
 }
 
