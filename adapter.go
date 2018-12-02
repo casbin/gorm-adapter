@@ -286,18 +286,11 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	if fieldIndex <= 5 && 5 < fieldIndex + len(fieldValues) {
 		line.V5 = fieldValues[5 - fieldIndex]
 	}
-	err := rawDeleteAll(a.db, line)
+	err := rawDelete(a.db, line)
 	return err
 }
 
 func rawDelete(db *gorm.DB, line CasbinRule) error {
-	err := db.Delete(CasbinRule{},"p_type = ? and v0 = ?" +
-		" and v1 = ? and v2 = ? and v3 = ? and v4 = ? and v5 = ?",
-		line.PType, line.V0, line.V1, line.V2, line.V3, line.V4, line.V5).Error
-	return err
-}
-
-func rawDeleteAll(db *gorm.DB, line CasbinRule) error {
 	queryArgs := []interface{}{line.PType}
 
 	queryStr := "p_type = ?"
