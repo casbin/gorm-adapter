@@ -31,6 +31,7 @@ func main() {
 	// Initialize a Gorm adapter and use it in a Casbin enforcer:
 	// The adapter will use the MySQL database named "casbin".
 	// If it doesn't exist, the adapter will create it automatically.
+	// You can also use a already existing gorm instance with gormadapter.NewAdapterByDB(gormInstance)
 	a := gormadapter.NewAdapter("mysql", "mysql_username:mysql_password@tcp(127.0.0.1:3306)/") // Your driver and data source. 
 	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	
