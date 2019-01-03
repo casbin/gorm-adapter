@@ -78,6 +78,14 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) *
 	return a
 }
 
+func NewAdapterByDB(db *gorm.DB) *Adapter {
+	a := &Adapter{
+		db: db,
+	}
+	a.createTable()
+	return a
+}
+
 func (a *Adapter) createDatabase() error {
 	var err error
 	var db *gorm.DB

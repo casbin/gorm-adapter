@@ -21,6 +21,9 @@ import (
 	"github.com/casbin/casbin"
 	"github.com/casbin/casbin/util"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jinzhu/gorm"
+	_ "github.com/jinzhu/gorm/dialects/mssql"
+	_ "github.com/jinzhu/gorm/dialects/postgres"
 	_ "github.com/lib/pq"
 )
 
@@ -33,12 +36,11 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 	}
 }
 
-func initPolicy(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) {
+func initPolicy(t *testing.T, a *Adapter) {
 	// Because the DB is empty at first,
 	// so we need to load the policy from the file adapter (.CSV) first.
 	e := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
 
-	a := NewAdapter(driverName, dataSourceName, dbSpecified...)
 	// This is a trick to save the current policy to the DB.
 	// We can't call e.SavePolicy() because the adapter in the enforcer is still the file adapter.
 	// The current policy means the policy in the Casbin enforcer (aka in memory).
@@ -59,32 +61,48 @@ func initPolicy(t *testing.T, driverName string, dataSourceName string, dbSpecif
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
-func testSaveLoad(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) {
+func testSaveLoad(t *testing.T, a *Adapter) {
 	// Initialize some policy in DB.
-	initPolicy(t, driverName, dataSourceName, dbSpecified...)
+	initPolicy(t, a)
 	// Note: you don't need to look at the above code
 	// if you already have a working DB with policy inside.
 
 	// Now the DB has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-	a := NewAdapter(driverName, dataSourceName, dbSpecified...)
+
 	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
-func testAutoSave(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) {
+func initAdapter(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) *Adapter {
+	// Create an adapter
+	a := NewAdapter(driverName, dataSourceName, dbSpecified...)
 	// Initialize some policy in DB.
-	initPolicy(t, driverName, dataSourceName, dbSpecified...)
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
 	// Note: you don't need to look at the above code
 	// if you already have a working DB with policy inside.
 
-	// Now the DB has policy, so we can provide a normal use case.
-	// Create an adapter and an enforcer.
-	// NewEnforcer() will load the policy automatically.
-	a := NewAdapter(driverName, dataSourceName, dbSpecified...)
-	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	return a
+}
 
+func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
+	// Create an adapter
+	a := NewAdapterByDB(db)
+	// Initialize some policy in DB.
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
+	// Note: you don't need to look at the above code
+	// if you already have a working DB with policy inside.
+
+	return a
+}
+
+func testAutoSave(t *testing.T, a *Adapter) {
+
+	// NewEnforcer() will load the policy automatically.
+	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	// AutoSave is enabled by default.
 	// Now we disable it.
 	e.EnableAutoSave(false)
@@ -120,11 +138,28 @@ func testAutoSave(t *testing.T, driverName string, dataSourceName string, dbSpec
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 }
 
-
 func TestAdapters(t *testing.T) {
-	testSaveLoad(t, "mysql", "root:@tcp(127.0.0.1:3306)/")
-	testSaveLoad(t, "postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
-	testAutoSave(t, "mysql", "root:@tcp(127.0.0.1:3306)/")
-	testAutoSave(t, "postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	a = initAdapter(t, "postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	db, err := gorm.Open("mysql", "root:@tcp(127.0.0.1:3306)/casbin")
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstance(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	db, err = gorm.Open("postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin")
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstance(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 }
