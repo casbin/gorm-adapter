@@ -128,6 +128,8 @@ func (a *Adapter) open() {
 
 		if a.driverName == "postgres" {
 			db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=casbin")
+		} else if a.driverName == "sqlite3" {
+			db, err = gorm.Open(a.driverName, a.dataSourceName)
 		} else {
 			db, err = gorm.Open(a.driverName, a.dataSourceName+"casbin")
 		}
