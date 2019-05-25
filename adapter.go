@@ -34,6 +34,15 @@ type CasbinRule struct {
 	V5    string `gorm:"size:100"`
 }
 
+type Filter struct {
+	V0 []string
+	V1 []string
+	V2 []string
+	V3 []string
+	V4 []string
+	V5 []string
+}
+
 func (c *CasbinRule) TableName() string{
 	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
 }
@@ -44,6 +53,7 @@ type Adapter struct {
 	dataSourceName string
 	dbSpecified    bool
 	db             *gorm.DB
+	isFiltered     bool
 }
 
 // finalizer is the destructor for Adapter.
@@ -193,8 +203,7 @@ func loadPolicyLine(line CasbinRule, model model.Model) {
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var lines []CasbinRule
-	err := a.db.Find(&lines).Error
-	if err != nil {
+	if err := a.db.Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -203,6 +212,57 @@ func (a *Adapter) LoadPolicy(model model.Model) error {
 	}
 
 	return nil
+}
+
+// LoadFilteredPolicy loads only policy rules that match the filter.
+func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
+	var lines []CasbinRule
+
+	filterValue, ok := filter.(Filter)
+	if !ok {
+		return errors.New("invalid filter type")
+	}
+
+	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Find(&lines).Error; err != nil {
+		return err
+	}
+
+	for _, line := range lines {
+		loadPolicyLine(line, model)
+	}
+	a.isFiltered = true
+
+	return nil
+}
+
+// IsFiltered returns true if the loaded policy has been filtered.
+func (a *Adapter) IsFiltered() bool {
+	return a.isFiltered
+}
+
+// filterQuery builds the gorm query to match the rule filter to use within a scope.
+func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
+	return func (db *gorm.DB) *gorm.DB {
+		if len(filter.V0) > 0 {
+			db = db.Where("v0 in (?)", filter.V0)
+		}
+		if len(filter.V1) > 0 {
+			db = db.Where("v1 in (?)", filter.V1)
+		}
+		if len(filter.V2) > 0 {
+			db = db.Where("v2 in (?)", filter.V2)
+		}
+		if len(filter.V3) > 0 {
+			db = db.Where("v3 in (?)", filter.V3)
+		}
+		if len(filter.V4) > 0 {
+			db = db.Where("v4 in (?)", filter.V4)
+		}
+		if len(filter.V5) > 0 {
+			db = db.Where("v5 in (?)", filter.V5)
+		}
+		return db
+	}
 }
 
 func savePolicyLine(ptype string, rule []string) CasbinRule {

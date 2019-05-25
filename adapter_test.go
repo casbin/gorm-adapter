@@ -15,6 +15,7 @@
 package gormadapter
 
 import (
+	"github.com/stretchr/testify/assert"
 	"log"
 	"testing"
 
@@ -138,6 +139,29 @@ func testAutoSave(t *testing.T, a *Adapter) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 }
 
+func testFilteredPolicy(t *testing.T, a *Adapter) {
+	// NewEnforcer() without an adapter will not auto load the policy
+	e := casbin.NewEnforcer("examples/rbac_model.conf")
+	// Now set the adapter
+	e.SetAdapter(a)
+
+	// Load only alice's policies
+	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice"}}))
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}})
+
+	// Load only bob's policies
+	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"bob"}}))
+	testGetPolicy(t, e, [][]string{{"bob", "data2", "write"}})
+
+	// Load policies for data2_admin
+	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"data2_admin"}}))
+	testGetPolicy(t, e, [][]string{{"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
+
+	// Load policies for alice and bob
+	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice", "bob"}}))
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
+}
+
 func TestAdapters(t *testing.T) {
 	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/")
 	testAutoSave(t, a)
@@ -155,6 +179,9 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
+	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
+
 	db, err = gorm.Open("postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin")
 	if err != nil {
 		panic(err)
@@ -162,4 +189,7 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
 }
