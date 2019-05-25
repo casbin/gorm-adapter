@@ -162,7 +162,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
 
 	// Load alice's policy with all five attributes
-	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice"}, V1: []string{"data"}, V2: []string{"1"}, V3: []string{"2"}, V4: []string{"3"}, V5: []string{"read"}}))
+	assert.Nil(t, e.LoadFilteredPolicy(Filter{PType: []string{"p"}, V0: []string{"alice"}, V1: []string{"data"}, V2: []string{"1"}, V3: []string{"2"}, V4: []string{"3"}, V5: []string{"read"}}))
 	testGetPolicy(t, e, [][]string{{"alice", "data", "1", "2", "3", "read"}})
 }
 

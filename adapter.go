@@ -35,15 +35,16 @@ type CasbinRule struct {
 }
 
 type Filter struct {
-	V0 []string
-	V1 []string
-	V2 []string
-	V3 []string
-	V4 []string
-	V5 []string
+	PType []string
+	V0    []string
+	V1    []string
+	V2    []string
+	V3    []string
+	V4    []string
+	V5    []string
 }
 
-func (c *CasbinRule) TableName() string{
+func (c *CasbinRule) TableName() string {
 	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
 }
 
@@ -242,7 +243,10 @@ func (a *Adapter) IsFiltered() bool {
 
 // filterQuery builds the gorm query to match the rule filter to use within a scope.
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
-	return func (db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if len(filter.PType) > 0 {
+			db = db.Where("p_type in (?)", filter.PType)
+		}
 		if len(filter.V0) > 0 {
 			db = db.Where("v0 in (?)", filter.V0)
 		}
@@ -338,23 +342,23 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	line := CasbinRule{}
 
 	line.PType = ptype
-	if fieldIndex <= 0 && 0 < fieldIndex + len(fieldValues) {
-		line.V0 = fieldValues[0 - fieldIndex]
+	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
+		line.V0 = fieldValues[0-fieldIndex]
 	}
-	if fieldIndex <= 1 && 1 < fieldIndex + len(fieldValues) {
-		line.V1 = fieldValues[1 - fieldIndex]
+	if fieldIndex <= 1 && 1 < fieldIndex+len(fieldValues) {
+		line.V1 = fieldValues[1-fieldIndex]
 	}
-	if fieldIndex <= 2 && 2 < fieldIndex + len(fieldValues) {
-		line.V2 = fieldValues[2 - fieldIndex]
+	if fieldIndex <= 2 && 2 < fieldIndex+len(fieldValues) {
+		line.V2 = fieldValues[2-fieldIndex]
 	}
-	if fieldIndex <= 3 && 3 < fieldIndex + len(fieldValues) {
-		line.V3 = fieldValues[3 - fieldIndex]
+	if fieldIndex <= 3 && 3 < fieldIndex+len(fieldValues) {
+		line.V3 = fieldValues[3-fieldIndex]
 	}
-	if fieldIndex <= 4 && 4 < fieldIndex + len(fieldValues) {
-		line.V4 = fieldValues[4 - fieldIndex]
+	if fieldIndex <= 4 && 4 < fieldIndex+len(fieldValues) {
+		line.V4 = fieldValues[4-fieldIndex]
 	}
-	if fieldIndex <= 5 && 5 < fieldIndex + len(fieldValues) {
-		line.V5 = fieldValues[5 - fieldIndex]
+	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
+		line.V5 = fieldValues[5-fieldIndex]
 	}
 	err := rawDelete(a.db, line)
 	return err
