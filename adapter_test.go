@@ -59,7 +59,7 @@ func initPolicy(t *testing.T, a *Adapter) {
 	if err != nil {
 		panic(err)
 	}
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
 func testSaveLoad(t *testing.T, a *Adapter) {
@@ -73,7 +73,7 @@ func testSaveLoad(t *testing.T, a *Adapter) {
 	// NewEnforcer() will load the policy automatically.
 
 	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
 func initAdapter(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) *Adapter {
@@ -114,7 +114,7 @@ func testAutoSave(t *testing.T, a *Adapter) {
 	// Reload the policy from the storage to see the effect.
 	e.LoadPolicy()
 	// This is still the original policy.
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 
 	// Now we enable the AutoSave.
 	e.EnableAutoSave(true)
@@ -125,18 +125,18 @@ func testAutoSave(t *testing.T, a *Adapter) {
 	// Reload the policy from the storage to see the effect.
 	e.LoadPolicy()
 	// The policy has a new rule: {"alice", "data1", "write"}.
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}, {"alice", "data1", "write"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data1", "write"}})
 
 	// Remove the added rule.
 	e.RemovePolicy("alice", "data1", "write")
 	e.LoadPolicy()
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 
 	// Remove "data2_admin" related policy rules via a filter.
 	// Two rules: {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"} are deleted.
 	e.RemoveFilteredPolicy(0, "data2_admin")
 	e.LoadPolicy()
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 }
 
 func testFilteredPolicy(t *testing.T, a *Adapter) {
@@ -147,7 +147,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 
 	// Load only alice's policies
 	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice"}}))
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}})
 
 	// Load only bob's policies
 	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"bob"}}))
@@ -159,11 +159,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 
 	// Load policies for alice and bob
 	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice", "bob"}}))
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"alice", "data", "1", "2", "3", "read"}})
-
-	// Load alice's policy with all five attributes
-	assert.Nil(t, e.LoadFilteredPolicy(Filter{PType: []string{"p"}, V0: []string{"alice"}, V1: []string{"data"}, V2: []string{"1"}, V3: []string{"2"}, V4: []string{"3"}, V5: []string{"read"}}))
-	testGetPolicy(t, e, [][]string{{"alice", "data", "1", "2", "3", "read"}})
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
 }
 
 func TestAdapters(t *testing.T) {
