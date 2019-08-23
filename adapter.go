@@ -25,13 +25,14 @@ import (
 )
 
 type CasbinRule struct {
-	PType string `gorm:"size:100"`
-	V0    string `gorm:"size:100"`
-	V1    string `gorm:"size:100"`
-	V2    string `gorm:"size:100"`
-	V3    string `gorm:"size:100"`
-	V4    string `gorm:"size:100"`
-	V5    string `gorm:"size:100"`
+	TablePrefix string `gorm:"-"`
+	PType       string `gorm:"size:100"`
+	V0          string `gorm:"size:100"`
+	V1          string `gorm:"size:100"`
+	V2          string `gorm:"size:100"`
+	V3          string `gorm:"size:100"`
+	V4          string `gorm:"size:100"`
+	V5          string `gorm:"size:100"`
 }
 
 type Filter struct {
@@ -45,11 +46,12 @@ type Filter struct {
 }
 
 func (c *CasbinRule) TableName() string {
-	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
+	return c.TablePrefix + "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
 }
 
 // Adapter represents the Gorm adapter for policy storage.
 type Adapter struct {
+	tablePrefix    string
 	driverName     string
 	dataSourceName string
 	dbSpecified    bool
@@ -95,9 +97,17 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 	return a, nil
 }
 
-func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
+// NewAdapterByDB obtained through an existing Gorm instance get  a adapter
+// You can specify the table prefix, or not
+// Example:
+// Do not specify the table prefix,
+// 		gormadapter.NewAdapterByDB(&db, "") Automatically generate table name like this "casbin_rule"
+// The specified the table prefix,
+// 		gormadapter.NewAdapterByDB(&db, "cms_") Automatically generate table name like this "cms_casbin_rule"
+func NewAdapterByDB(db *gorm.DB, prefix string) (*Adapter, error) {
 	a := &Adapter{
-		db: db,
+		tablePrefix: prefix,
+		db:          db,
 	}
 
 	err := a.createTable()
@@ -180,16 +190,21 @@ func (a *Adapter) close() error {
 	return nil
 }
 
+// getTableInstance return the dynamic table name
+func (a *Adapter) getTableInstance() *CasbinRule {
+	return &CasbinRule{TablePrefix: a.tablePrefix}
+}
+
 func (a *Adapter) createTable() error {
-	if a.db.HasTable(&CasbinRule{}) {
+	if a.db.HasTable(a.getTableInstance()) {
 		return nil
 	}
 
-	return a.db.CreateTable(&CasbinRule{}).Error
+	return a.db.CreateTable(a.getTableInstance()).Error
 }
 
 func (a *Adapter) dropTable() error {
-	return a.db.DropTable(&CasbinRule{}).Error
+	return a.db.DropTable(a.getTableInstance()).Error
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
