@@ -97,17 +97,25 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 	return a, nil
 }
 
-// NewAdapterByDB obtained through an existing Gorm instance get  a adapter
-// You can specify the table prefix, or not
-// Example:
-// Do not specify the table prefix,
-// 		gormadapter.NewAdapterByDB(&db, "") Automatically generate table name like this "casbin_rule"
-// The specified the table prefix,
-// 		gormadapter.NewAdapterByDB(&db, "cms_") Automatically generate table name like this "cms_casbin_rule"
-func NewAdapterByDB(db *gorm.DB, prefix string) (*Adapter, error) {
+// NewAdapterByDB obtained through an existing Gorm instance get  a adapter, specify the table prefix
+// Example: gormadapter.NewAdapterByDBUsePrefix(&db, "cms_") Automatically generate table name like this "cms_casbin_rule"
+func NewAdapterByDBUsePrefix(db *gorm.DB, prefix string) (*Adapter, error) {
 	a := &Adapter{
 		tablePrefix: prefix,
 		db:          db,
+	}
+
+	err := a.createTable()
+	if err != nil {
+		return nil, err
+	}
+
+	return a, nil
+}
+
+func NewAdapterByDB(db *gorm.DB, prefix string) (*Adapter, error) {
+	a := &Adapter{
+		db: db,
 	}
 
 	err := a.createTable()
