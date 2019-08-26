@@ -24,6 +24,8 @@ import (
 	"github.com/lib/pq"
 )
 
+var tablePrefix string
+
 type CasbinRule struct {
 	TablePrefix string `gorm:"-"`
 	PType       string `gorm:"size:100"`
@@ -104,6 +106,8 @@ func NewAdapterByDBUsePrefix(db *gorm.DB, prefix string) (*Adapter, error) {
 		tablePrefix: prefix,
 		db:          db,
 	}
+
+	tablePrefix = prefix
 
 	err := a.createTable()
 	if err != nil {
@@ -308,7 +312,7 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 }
 
 func savePolicyLine(ptype string, rule []string) CasbinRule {
-	line := CasbinRule{}
+	line := CasbinRule{TablePrefix: tablePrefix}
 
 	line.PType = ptype
 	if len(rule) > 0 {
@@ -383,7 +387,7 @@ func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	line := CasbinRule{}
+	line := CasbinRule{TablePrefix: tablePrefix}
 
 	line.PType = ptype
 	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
@@ -437,6 +441,6 @@ func rawDelete(db *gorm.DB, line CasbinRule) error {
 		queryArgs = append(queryArgs, line.V5)
 	}
 	args := append([]interface{}{queryStr}, queryArgs...)
-	err := db.Delete(CasbinRule{}, args...).Error
+	err := db.Delete(CasbinRule{TablePrefix: tablePrefix}, args...).Error
 	return err
 }
