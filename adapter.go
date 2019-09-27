@@ -311,8 +311,8 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 	}
 }
 
-func savePolicyLine(ptype string, rule []string) CasbinRule {
-	line := CasbinRule{TablePrefix: tablePrefix}
+func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
+	line := a.getTableInstance()
 
 	line.PType = ptype
 	if len(rule) > 0 {
@@ -334,7 +334,7 @@ func savePolicyLine(ptype string, rule []string) CasbinRule {
 		line.V5 = rule[5]
 	}
 
-	return line
+	return *line
 }
 
 // SavePolicy saves policy to database.
@@ -350,7 +350,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
-			line := savePolicyLine(ptype, rule)
+			line := a.savePolicyLine(ptype, rule)
 			err := a.db.Create(&line).Error
 			if err != nil {
 				return err
@@ -360,7 +360,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 	for ptype, ast := range model["g"] {
 		for _, rule := range ast.Policy {
-			line := savePolicyLine(ptype, rule)
+			line := a.savePolicyLine(ptype, rule)
 			err := a.db.Create(&line).Error
 			if err != nil {
 				return err
@@ -373,21 +373,21 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 // AddPolicy adds a policy rule to the storage.
 func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
-	line := savePolicyLine(ptype, rule)
+	line := a.savePolicyLine(ptype, rule)
 	err := a.db.Create(&line).Error
 	return err
 }
 
 // RemovePolicy removes a policy rule from the storage.
 func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
-	line := savePolicyLine(ptype, rule)
-	err := rawDelete(a.db, line) //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
+	line := a.savePolicyLine(ptype, rule)
+	err := a.rawDelete(a.db, line) //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
 	return err
 }
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
-	line := CasbinRule{TablePrefix: tablePrefix}
+	line := a.getTableInstance()
 
 	line.PType = ptype
 	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
@@ -408,11 +408,11 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
 		line.V5 = fieldValues[5-fieldIndex]
 	}
-	err := rawDelete(a.db, line)
+	err := a.rawDelete(a.db, *line)
 	return err
 }
 
-func rawDelete(db *gorm.DB, line CasbinRule) error {
+func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 	queryArgs := []interface{}{line.PType}
 
 	queryStr := "p_type = ?"
@@ -441,6 +441,6 @@ func rawDelete(db *gorm.DB, line CasbinRule) error {
 		queryArgs = append(queryArgs, line.V5)
 	}
 	args := append([]interface{}{queryStr}, queryArgs...)
-	err := db.Delete(CasbinRule{TablePrefix: tablePrefix}, args...).Error
+	err := db.Delete(a.getTableInstance(), args...).Error
 	return err
 }
