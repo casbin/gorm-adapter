@@ -21,8 +21,8 @@ import (
 	_ "github.com/Kount/pq-timeouts"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
+	"github.com/lucidhq/gorm"
 )
 
 var tablePrefix string
