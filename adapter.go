@@ -18,6 +18,7 @@ import (
 	"errors"
 	"runtime"
 
+	_ "github.com/Kount/pq-timeouts"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/jinzhu/gorm"
@@ -133,7 +134,7 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 func (a *Adapter) createDatabase() error {
 	var err error
 	var db *gorm.DB
-	if a.driverName == "postgres" {
+	if a.driverName == "postgres" || a.driverName == "pq-timeouts" {
 		db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=postgres")
 	} else {
 		db, err = gorm.Open(a.driverName, a.dataSourceName)
@@ -142,7 +143,7 @@ func (a *Adapter) createDatabase() error {
 		return err
 	}
 
-	if a.driverName == "postgres" {
+	if a.driverName == "postgres" || a.driverName == "pq-timeouts" {
 		if err = db.Exec("CREATE DATABASE casbin").Error; err != nil {
 			// 42P04 is	duplicate_database
 			if err.(*pq.Error).Code == "42P04" {
@@ -175,7 +176,7 @@ func (a *Adapter) open() error {
 			return err
 		}
 
-		if a.driverName == "postgres" {
+		if a.driverName == "postgres" || a.driverName == "pq-timeouts" {
 			db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=casbin")
 		} else if a.driverName == "sqlite3" {
 			db, err = gorm.Open(a.driverName, a.dataSourceName)
