@@ -16,6 +16,7 @@ package gormadapter
 
 import (
 	"log"
+	"os"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -24,6 +25,7 @@ import (
 	"github.com/jinzhu/gorm"
 	_ "github.com/jinzhu/gorm/dialects/mssql"
 	_ "github.com/jinzhu/gorm/dialects/postgres"
+	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 )
@@ -105,6 +107,25 @@ func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 	// if you already have a working DB with policy inside.
 
 	return a
+}
+
+func TestNilField(t *testing.T) {
+	a, err := NewAdapter("sqlite3", "test.db")
+	assert.Nil(t, err)
+	defer os.Remove("test.db")
+
+	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	assert.Nil(t, err)
+	e.EnableAutoSave(false)
+
+	ok, err := e.AddPolicy("", "data1", "write")
+	assert.Nil(t, err)
+	e.SavePolicy()
+	assert.Nil(t, e.LoadPolicy())
+
+	ok, err = e.Enforce("", "data1", "write")
+	assert.Nil(t, err)
+	assert.Equal(t, ok, true)
 }
 
 func testAutoSave(t *testing.T, a *Adapter) {
