@@ -17,6 +17,7 @@ package gormadapter
 import (
 	"errors"
 	"runtime"
+	"strings"
 
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
@@ -220,24 +221,22 @@ func (a *Adapter) dropTable() error {
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
-	lineText := line.PType
-	if line.V0 != "" {
-		lineText += ", " + line.V0
-	}
-	if line.V1 != "" {
-		lineText += ", " + line.V1
-	}
-	if line.V2 != "" {
-		lineText += ", " + line.V2
-	}
-	if line.V3 != "" {
-		lineText += ", " + line.V3
-	}
-	if line.V4 != "" {
-		lineText += ", " + line.V4
-	}
+	var p = []string{line.PType,
+		line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
+
+	var lineText string
 	if line.V5 != "" {
-		lineText += ", " + line.V5
+		lineText = strings.Join(p, ", ")
+	} else if line.V4 != "" {
+		lineText = strings.Join(p[:6], ", ")
+	} else if line.V3 != "" {
+		lineText = strings.Join(p[:5], ", ")
+	} else if line.V2 != "" {
+		lineText = strings.Join(p[:4], ", ")
+	} else if line.V1 != "" {
+		lineText = strings.Join(p[:3], ", ")
+	} else if line.V0 != "" {
+		lineText = strings.Join(p[:2], ", ")
 	}
 
 	persist.LoadPolicyLine(lineText, model)
