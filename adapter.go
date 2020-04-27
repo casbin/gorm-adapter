@@ -387,28 +387,30 @@ func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 
 // AddPolicies adds multiple policy rules to the storage.
 func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error {
-	var err error
-	for _, rule := range rules {
-		line := a.savePolicyLine(ptype, rule)
-		err = a.db.Create(&line).Error
-		if err != nil {
-			return err
+	return a.db.Transaction(func(tx *gorm.DB) error {
+		for _, rule := range rules {
+			line := a.savePolicyLine(ptype, rule)
+			if err := tx.Create(&line).Error; err != nil {
+				tx.Rollback()
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // RemovePolicy removes multiple policy rules from the storage.
 func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) error {
-	var err error
-	for _, rule := range rules {
-		line := a.savePolicyLine(ptype, rule)
-		err = a.rawDelete(a.db, line) //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
-		if err != nil {
-			return err
+	return a.db.Transaction(func(tx *gorm.DB) error {
+		for _, rule := range rules {
+			line := a.savePolicyLine(ptype, rule)
+			if err := a.rawDelete(a.db, line); err != nil { //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
+				tx.Rollback()
+				return err
+			}
 		}
-	}
-	return nil
+		return nil
+	})
 }
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
