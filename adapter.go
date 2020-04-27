@@ -391,7 +391,6 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 		for _, rule := range rules {
 			line := a.savePolicyLine(ptype, rule)
 			if err := tx.Create(&line).Error; err != nil {
-				tx.Rollback()
 				return err
 			}
 		}
@@ -404,8 +403,7 @@ func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) err
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		for _, rule := range rules {
 			line := a.savePolicyLine(ptype, rule)
-			if err := a.rawDelete(a.db, line); err != nil { //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
-				tx.Rollback()
+			if err := a.rawDelete(tx, line); err != nil { //can't use db.Delete as we're not using primary key http://jinzhu.me/gorm/crud.html#delete
 				return err
 			}
 		}
