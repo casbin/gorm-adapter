@@ -285,27 +285,41 @@ func (a *Adapter) IsFiltered() bool {
 // filterQuery builds the gorm query to match the rule filter to use within a scope.
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
+		var (
+			byVFiled []string
+			pg string
+		)
 		if len(filter.PType) > 0 {
-			db = db.Where("p_type in (?)", filter.PType)
+			pg = fmt.Sprintf("`p_type` in ('%s')", strings.Join(filter.PType, "','"))
 		}
 		if len(filter.V0) > 0 {
-			db = db.Where("v0 in (?)", filter.V0)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v0` in ('%s'))", strings.Join(filter.V0, "','")))
 		}
 		if len(filter.V1) > 0 {
-			db = db.Where("v1 in (?)", filter.V1)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v1` in ('%s'))", strings.Join(filter.V1, "','")))
+
 		}
 		if len(filter.V2) > 0 {
-			db = db.Where("v2 in (?)", filter.V2)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v2` in ('%s'))", strings.Join(filter.V2, "','")))
+
 		}
 		if len(filter.V3) > 0 {
-			db = db.Where("v3 in (?)", filter.V3)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v3` in ('%s'))", strings.Join(filter.V3, "','")))
+
 		}
 		if len(filter.V4) > 0 {
-			db = db.Where("v4 in (?)", filter.V4)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v4` in ('%s'))", strings.Join(filter.V4, "','")))
+
 		}
 		if len(filter.V5) > 0 {
-			db = db.Where("v5 in (?)", filter.V5)
+			byVFiled = append(byVFiled, fmt.Sprintf("(`v5` in ('%s'))", strings.Join(filter.V5, "','")))
+
 		}
+		v := strings.Join(byVFiled, " or ")
+
+		db = db.Where(pg)
+		db = db.Where(v)
+
 		return db
 	}
 }
