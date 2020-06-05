@@ -291,6 +291,7 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 		)
 		if len(filter.PType) > 0 {
 			pg = fmt.Sprintf("`p_type` in ('%s')", strings.Join(filter.PType, "','"))
+			db = db.Where(pg)
 		}
 		if len(filter.V0) > 0 {
 			byVFiled = append(byVFiled, fmt.Sprintf("(`v0` in ('%s'))", strings.Join(filter.V0, "','")))
@@ -315,11 +316,10 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 			byVFiled = append(byVFiled, fmt.Sprintf("(`v5` in ('%s'))", strings.Join(filter.V5, "','")))
 
 		}
-		v := strings.Join(byVFiled, " or ")
-
-		db = db.Where(pg)
-		db = db.Where(v)
-
+		if len(byVFiled) > 0 {
+			v := strings.Join(byVFiled, " or ")
+			db = db.Where(v)
+		}
 		return db
 	}
 }
