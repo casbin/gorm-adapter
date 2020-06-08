@@ -290,30 +290,30 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 			pg string
 		)
 		if len(filter.PType) > 0 {
-			pg = fmt.Sprintf("`p_type` in ('%s')", strings.Join(filter.PType, "','"))
+			pg = fmt.Sprintf("p_type in ('%s')", strings.Join(filter.PType, "','"))
 			db = db.Where(pg)
 		}
 		if len(filter.V0) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v0` in ('%s'))", strings.Join(filter.V0, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v0 in ('%s'))", strings.Join(filter.V0, "','")))
 		}
 		if len(filter.V1) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v1` in ('%s'))", strings.Join(filter.V1, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v1 in ('%s'))", strings.Join(filter.V1, "','")))
 
 		}
 		if len(filter.V2) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v2` in ('%s'))", strings.Join(filter.V2, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v2 in ('%s'))", strings.Join(filter.V2, "','")))
 
 		}
 		if len(filter.V3) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v3` in ('%s'))", strings.Join(filter.V3, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v3 in ('%s'))", strings.Join(filter.V3, "','")))
 
 		}
 		if len(filter.V4) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v4` in ('%s'))", strings.Join(filter.V4, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v4 in ('%s'))", strings.Join(filter.V4, "','")))
 
 		}
 		if len(filter.V5) > 0 {
-			byVFiled = append(byVFiled, fmt.Sprintf("(`v5` in ('%s'))", strings.Join(filter.V5, "','")))
+			byVFiled = append(byVFiled, fmt.Sprintf("(v5 in ('%s'))", strings.Join(filter.V5, "','")))
 
 		}
 		if len(byVFiled) > 0 {
