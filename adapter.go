@@ -16,13 +16,15 @@ package gormadapter
 
 import (
 	"errors"
-	"runtime"
-	"strings"
-
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/jinzhu/gorm"
 	"github.com/lib/pq"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
+	"gorm.io/driver/sqlserver"
+	"gorm.io/gorm"
+	"strings"
 )
 
 var tablePrefix string
@@ -62,14 +64,6 @@ type Adapter struct {
 	isFiltered     bool
 }
 
-// finalizer is the destructor for Adapter.
-func finalizer(a *Adapter) {
-	err := a.db.Close()
-	if err != nil {
-		panic(err)
-	}
-}
-
 // NewAdapter is the constructor for Adapter.
 // dbSpecified is an optional bool parameter. The default value is false.
 // It's up to whether you have specified an existing DB in dataSourceName.
@@ -93,9 +87,6 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 	if err != nil {
 		return nil, err
 	}
-
-	// Call the destructor when the object is released.
-	runtime.SetFinalizer(a, finalizer)
 
 	return a, nil
 }
@@ -131,23 +122,36 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return a, nil
 }
 
-func (a *Adapter) createDatabase() error {
+func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
-	if a.driverName == "postgres" {
-		db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=postgres")
+	if driverName == "postgres" {
+		db, err = gorm.Open(postgres.Open(dataSourceName+" dbname=postgres"), &gorm.Config{})
+	} else if driverName == "mysql" {
+		db, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
+	} else if driverName == "sqlite3" {
+		db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+	} else if driverName == "sqlserver" {
+		db, err = gorm.Open(sqlserver.Open(dataSourceName), &gorm.Config{})
 	} else {
-		db, err = gorm.Open(a.driverName, a.dataSourceName)
+		return nil, errors.New("database dialect is not supported")
 	}
+	if err != nil {
+		return nil, err
+	}
+	return db, err
+}
+
+func (a *Adapter) createDatabase() error {
+	var err error
+	db, err := openDBConnection(a.driverName, a.dataSourceName)
 	if err != nil {
 		return err
 	}
-
 	if a.driverName == "postgres" {
 		if err = db.Exec("CREATE DATABASE casbin").Error; err != nil {
 			// 42P04 is	duplicate_database
 			if err.(*pq.Error).Code == "42P04" {
-				db.Close()
 				return nil
 			}
 		}
@@ -155,11 +159,9 @@ func (a *Adapter) createDatabase() error {
 		err = db.Exec("CREATE DATABASE IF NOT EXISTS casbin").Error
 	}
 	if err != nil {
-		db.Close()
 		return err
 	}
-
-	return db.Close()
+	return nil
 }
 
 func (a *Adapter) open() error {
@@ -167,7 +169,7 @@ func (a *Adapter) open() error {
 	var db *gorm.DB
 
 	if a.dbSpecified {
-		db, err = gorm.Open(a.driverName, a.dataSourceName)
+		db, err = openDBConnection(a.driverName, a.dataSourceName)
 		if err != nil {
 			return err
 		}
@@ -175,30 +177,22 @@ func (a *Adapter) open() error {
 		if err = a.createDatabase(); err != nil {
 			return err
 		}
-
 		if a.driverName == "postgres" {
-			db, err = gorm.Open(a.driverName, a.dataSourceName+" dbname=casbin")
+			db, err = openDBConnection(a.driverName, a.dataSourceName+" dbname=casbin")
 		} else if a.driverName == "sqlite3" {
-			db, err = gorm.Open(a.driverName, a.dataSourceName)
+			db, err = openDBConnection(a.driverName, a.dataSourceName)
 		} else {
-			db, err = gorm.Open(a.driverName, a.dataSourceName+"casbin")
+			db, err = openDBConnection(a.driverName, a.dataSourceName+"casbin")
 		}
 		if err != nil {
 			return err
 		}
 	}
-
 	a.db = db
-
 	return a.createTable()
 }
 
 func (a *Adapter) close() error {
-	err := a.db.Close()
-	if err != nil {
-		return err
-	}
-
 	a.db = nil
 	return nil
 }
@@ -209,15 +203,15 @@ func (a *Adapter) getTableInstance() *CasbinRule {
 }
 
 func (a *Adapter) createTable() error {
-	if a.db.HasTable(a.getTableInstance()) {
+	if a.db.Migrator().HasTable(a.getTableInstance()) {
 		return nil
 	}
 
-	return a.db.CreateTable(a.getTableInstance()).Error
+	return a.db.Migrator().CreateTable(a.getTableInstance())
 }
 
 func (a *Adapter) dropTable() error {
-	return a.db.DropTable(a.getTableInstance()).Error
+	return a.db.Migrator().DropTable(a.getTableInstance())
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
