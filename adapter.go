@@ -28,8 +28,6 @@ import (
 	"strings"
 )
 
-var tablePrefix string
-
 type CasbinRule struct {
 	TablePrefix string `gorm:"-"`
 	PType       string `gorm:"size:100"`
@@ -51,7 +49,11 @@ type Filter struct {
 	V5    []string
 }
 
-func CasbinRuleTable(c *CasbinRule) func(db *gorm.DB) *gorm.DB {
+func (c *CasbinRule) TableName() string {
+	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
+}
+
+func DynamicCasbinRuleTable(c *CasbinRule) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		return db.Table(c.TablePrefix + "casbin_rule") //as Gorm keeps table names are plural, and we love consistency
 	}
@@ -114,10 +116,8 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 func NewAdapterByDBUsePrefix(db *gorm.DB, prefix string) (*Adapter, error) {
 	a := &Adapter{
 		tablePrefix: prefix,
-		db:          db.Scopes(CasbinRuleTable(&CasbinRule{TablePrefix: tablePrefix})),
+		db:          db.Scopes(DynamicCasbinRuleTable(&CasbinRule{TablePrefix: prefix})),
 	}
-
-	tablePrefix = prefix
 
 	err := a.createTable()
 	if err != nil {
