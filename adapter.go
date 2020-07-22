@@ -24,6 +24,7 @@ import (
 	"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
+	"runtime"
 	"strings"
 )
 
@@ -64,6 +65,18 @@ type Adapter struct {
 	isFiltered     bool
 }
 
+// finalizer is the destructor for Adapter.
+func finalizer(a *Adapter) {
+	sqlDB, err := a.db.DB()
+	if err != nil {
+		panic(err)
+	}
+	err = sqlDB.Close()
+	if err != nil {
+		panic(err)
+	}
+}
+
 // NewAdapter is the constructor for Adapter.
 // dbSpecified is an optional bool parameter. The default value is false.
 // It's up to whether you have specified an existing DB in dataSourceName.
@@ -87,6 +100,9 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 	if err != nil {
 		return nil, err
 	}
+
+	// Call the destructor when the object is released.
+	runtime.SetFinalizer(a, finalizer)
 
 	return a, nil
 }
