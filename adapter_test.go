@@ -15,6 +15,8 @@
 package gormadapter
 
 import (
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"log"
 	"os"
 	"testing"
@@ -22,12 +24,9 @@ import (
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jinzhu/gorm"
-	_ "github.com/jinzhu/gorm/dialects/mssql"
-	_ "github.com/jinzhu/gorm/dialects/postgres"
-	_ "github.com/jinzhu/gorm/dialects/sqlite"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/gorm"
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
@@ -199,7 +198,7 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	db, err := gorm.Open("mysql", "root:@tcp(127.0.0.1:3306)/casbin")
+	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -210,7 +209,7 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open("postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin")
+	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
