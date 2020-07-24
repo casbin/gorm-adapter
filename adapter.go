@@ -18,7 +18,7 @@ import (
 	"errors"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
-	"github.com/lib/pq"
+	"github.com/jackc/pgconn"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlite"
@@ -27,8 +27,6 @@ import (
 	"runtime"
 	"strings"
 )
-
-var tablePrefix string
 
 type CasbinRule struct {
 	TablePrefix string `gorm:"-"`
@@ -52,7 +50,13 @@ type Filter struct {
 }
 
 func (c *CasbinRule) TableName() string {
-	return c.TablePrefix + "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
+	return "casbin_rule" //as Gorm keeps table names are plural, and we love consistency
+}
+
+func DynamicCasbinRuleTable(c *CasbinRule) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		return db.Table(c.TablePrefix + "casbin_rule") //as Gorm keeps table names are plural, and we love consistency
+	}
 }
 
 // Adapter represents the Gorm adapter for policy storage.
@@ -112,10 +116,8 @@ func NewAdapter(driverName string, dataSourceName string, dbSpecified ...bool) (
 func NewAdapterByDBUsePrefix(db *gorm.DB, prefix string) (*Adapter, error) {
 	a := &Adapter{
 		tablePrefix: prefix,
-		db:          db,
+		db:          db.Scopes(DynamicCasbinRuleTable(&CasbinRule{TablePrefix: prefix})),
 	}
-
-	tablePrefix = prefix
 
 	err := a.createTable()
 	if err != nil {
@@ -167,7 +169,7 @@ func (a *Adapter) createDatabase() error {
 	if a.driverName == "postgres" {
 		if err = db.Exec("CREATE DATABASE casbin").Error; err != nil {
 			// 42P04 is	duplicate_database
-			if err.(*pq.Error).Code == "42P04" {
+			if err.(*pgconn.PgError).Code == "42P04" {
 				return nil
 			}
 		}
