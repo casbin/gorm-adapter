@@ -31,7 +31,7 @@ import (
 type CasbinRule struct {
 	TablePrefix string `gorm:"-"`
 	TableName   string `gorm:"-"`
-	//ID			uint   `gorm:"primaryKey"`
+	ID			uint   `gorm:"primaryKey"`
 	PType       string `gorm:"size:10;uniqueIndex:unique_index"`
 	V0          string `gorm:"size:40;uniqueIndex:unique_index"`
 	V1          string `gorm:"size:40;uniqueIndex:unique_index"`
