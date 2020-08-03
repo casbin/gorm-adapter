@@ -80,9 +80,9 @@ func testSaveLoad(t *testing.T, a *Adapter) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
-func initAdapter(t *testing.T, driverName string, dataSourceName string, dbSpecified ...bool) *Adapter {
+func initAdapter(t *testing.T, driverName string, dataSourceName string, params ...interface{}) *Adapter {
 	// Create an adapter
-	a, err := NewAdapter(driverName, dataSourceName, dbSpecified...)
+	a, err := NewAdapter(driverName, dataSourceName, params...)
 	if err != nil {
 		panic(err)
 	}
@@ -190,7 +190,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 }
 
 func TestAdapters(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/")
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/","casbin_ss","123test")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
