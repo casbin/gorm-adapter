@@ -190,7 +190,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 }
 
 func TestAdapters(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/","casbin_ss","123test")
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/","casbin","casbin_rule")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
