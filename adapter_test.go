@@ -18,7 +18,6 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"log"
-	"os"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -108,24 +107,24 @@ func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 	return a
 }
 
-func TestNilField(t *testing.T) {
-	a, err := NewAdapter("sqlite3", "test.db")
-	assert.Nil(t, err)
-	defer os.Remove("test.db")
-
-	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
-	assert.Nil(t, err)
-	e.EnableAutoSave(false)
-
-	ok, err := e.AddPolicy("", "data1", "write")
-	assert.Nil(t, err)
-	e.SavePolicy()
-	assert.Nil(t, e.LoadPolicy())
-
-	ok, err = e.Enforce("", "data1", "write")
-	assert.Nil(t, err)
-	assert.Equal(t, ok, true)
-}
+//func TestNilField(t *testing.T) {
+//	a, err := NewAdapter("sqlite3", "test.db")
+//	assert.Nil(t, err)
+//	defer os.Remove("test.db")
+//
+//	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
+//	assert.Nil(t, err)
+//	e.EnableAutoSave(false)
+//
+//	ok, err := e.AddPolicy("", "data1", "write")
+//	assert.Nil(t, err)
+//	e.SavePolicy()
+//	assert.Nil(t, e.LoadPolicy())
+//
+//	ok, err = e.Enforce("", "data1", "write")
+//	assert.Nil(t, err)
+//	assert.Equal(t, ok, true)
+//}
 
 func testAutoSave(t *testing.T, a *Adapter) {
 
