@@ -116,7 +116,7 @@ func NewAdapter(driverName string, dataSourceName string,params ...interface{}) 
 			}
 			a.databaseName = p1
 		case string:
-			p1 ,ok :=params[0].(string)
+			p1, ok := params[0].(string)
 			if !ok {
 				return nil,errors.New("wrong format")
 			}
@@ -126,7 +126,7 @@ func NewAdapter(driverName string, dataSourceName string,params ...interface{}) 
 			return nil,errors.New("wrong format")
 		}
 	}else if len(params) == 3 {
-		if p3,ok := params[2].(bool);ok {
+		if p3, ok := params[2].(bool); ok {
 			a.dbSpecified = p3
 			a.databaseName = params[0].(string)
 			a.tableName = params[1].(string)
@@ -244,7 +244,8 @@ func (a *Adapter) open() error {
 			return err
 		}
 	}
-	a.db = db.Scopes(CasbinTableName(&CasbinRule{TableName:a.tableName,TablePrefix:a.tablePrefix})).Session(&gorm.Session{WithConditions: true})
+	a.db = db.Scopes(CasbinTableName(&CasbinRule{TableName:a.tableName,TablePrefix:a.tablePrefix})).
+		Session(&gorm.Session{WithConditions: true})
 	return a.createTable()
 }
 
