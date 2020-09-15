@@ -165,6 +165,10 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*
 }
 
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
+	if db != nil && db.Statement.Table == "" {
+		db = db.Scopes(CasbinTableName(&CasbinRule{TableName: "casbin_rule"}))
+	}
+
 	a := &Adapter{
 		db: db,
 	}
