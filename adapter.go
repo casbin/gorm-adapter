@@ -28,16 +28,19 @@ import (
 	"gorm.io/gorm"
 )
 
+const (
+	defaultDatabaseName = "casbin"
+	defaultTableName    = "casbin_rule"
+)
+
 type CasbinRule struct {
-	TablePrefix string `gorm:"-"`
-	TableName   string `gorm:"-"`
-	PType       string `gorm:"size:100"`
-	V0          string `gorm:"size:100"`
-	V1          string `gorm:"size:100"`
-	V2          string `gorm:"size:100"`
-	V3          string `gorm:"size:100"`
-	V4          string `gorm:"size:100"`
-	V5          string `gorm:"size:100"`
+	PType string `gorm:"size:100"`
+	V0    string `gorm:"size:100"`
+	V1    string `gorm:"size:100"`
+	V2    string `gorm:"size:100"`
+	V3    string `gorm:"size:100"`
+	V4    string `gorm:"size:100"`
+	V5    string `gorm:"size:100"`
 }
 
 type Filter struct {
@@ -52,10 +55,10 @@ type Filter struct {
 
 // Adapter represents the Gorm adapter for policy storage.
 type Adapter struct {
-	tablePrefix    string
 	driverName     string
 	dataSourceName string
 	databaseName   string
+	tablePrefix    string
 	tableName      string
 	dbSpecified    bool
 	db             *gorm.DB
@@ -90,8 +93,8 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	a.driverName = driverName
 	a.dataSourceName = dataSourceName
 
-	a.tableName = "casbin_rule"
-	a.databaseName = "casbin"
+	a.tableName = defaultTableName
+	a.databaseName = defaultDatabaseName
 	a.dbSpecified = false
 
 	if len(params) == 0 {
@@ -148,14 +151,19 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	return a, nil
 }
 
-// NewAdapterByDB obtained through an existing Gorm instance get  a adapter, specify the table prefix and the table name
+// NewAdapterByDBUseTableName obtained through an existing Gorm instance get  a adapter, specify the table prefix and the table name
 // Example: gormadapter.NewAdapterByDBUseTableName(&db, "cms", "casbin") Automatically generate table name like this "cms_casbin"
 func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*Adapter, error) {
-	a := &Adapter{
-		tablePrefix: prefix,
-		db:          db.Scopes(CasbinTableName(&CasbinRule{TablePrefix: prefix, TableName: tablename})),
+	if len(tablename) == 0 {
+		tablename = defaultTableName
 	}
 
+	a := &Adapter{
+		tablePrefix: prefix,
+		tableName:   tablename,
+	}
+
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
 	err := a.createTable()
 	if err != nil {
 		return nil, err
@@ -164,21 +172,9 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*
 	return a, nil
 }
 
+// NewAdapterByDB obtained through an existing Gorm instance get  a adapter
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
-	if db != nil && db.Statement.Table == "" {
-		db = db.Scopes(CasbinTableName(&CasbinRule{TableName: "casbin_rule"}))
-	}
-
-	a := &Adapter{
-		db: db,
-	}
-
-	err := a.createTable()
-	if err != nil {
-		return nil, err
-	}
-
-	return a, nil
+	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
 
 func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
@@ -247,8 +243,8 @@ func (a *Adapter) open() error {
 			return err
 		}
 	}
-	a.db = db.Scopes(CasbinTableName(&CasbinRule{TableName: a.tableName, TablePrefix: a.tablePrefix})).
-		Session(&gorm.Session{WithConditions: true})
+
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
 	return a.createTable()
 }
 
@@ -262,25 +258,21 @@ func (a *Adapter) getTableInstance() *CasbinRule {
 	return &CasbinRule{}
 }
 
-func CasbinTableName(c *CasbinRule) func(db *gorm.DB) *gorm.DB {
+func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		if c.TablePrefix != "" {
-			return db.Table(c.TablePrefix + "_" + c.TableName)
+		if a.tablePrefix != "" {
+			return db.Table(a.tablePrefix + "_" + a.tableName)
 		}
-		return db.Table(c.TableName)
+		return db.Table(a.tableName)
 	}
 }
 
 func (a *Adapter) createTable() error {
-	if a.db.Migrator().HasTable(a.getTableInstance()) {
-		return nil
-	}
-
-	return a.db.Migrator().CreateTable(a.getTableInstance())
+	return a.db.Scopes(a.casbinRuleTable()).AutoMigrate(a.getTableInstance())
 }
 
 func (a *Adapter) dropTable() error {
-	return a.db.Migrator().DropTable(a.getTableInstance())
+	return a.db.Scopes(a.casbinRuleTable()).Migrator().DropTable(a.getTableInstance())
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
@@ -308,7 +300,7 @@ func loadPolicyLine(line CasbinRule, model model.Model) {
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var lines []CasbinRule
-	if err := a.db.Find(&lines).Error; err != nil {
+	if err := a.db.Scopes(a.casbinRuleTable()).Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -328,7 +320,7 @@ func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) erro
 		return errors.New("invalid filter type")
 	}
 
-	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Find(&lines).Error; err != nil {
+	if err := a.db.Scopes(a.casbinRuleTable(), a.filterQuery(a.db, filterValue)).Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -413,7 +405,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
 			line := a.savePolicyLine(ptype, rule)
-			err := a.db.Create(&line).Error
+			err := a.db.Scopes(a.casbinRuleTable()).Create(&line).Error
 			if err != nil {
 				return err
 			}
@@ -423,7 +415,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 	for ptype, ast := range model["g"] {
 		for _, rule := range ast.Policy {
 			line := a.savePolicyLine(ptype, rule)
-			err := a.db.Create(&line).Error
+			err := a.db.Scopes(a.casbinRuleTable()).Create(&line).Error
 			if err != nil {
 				return err
 			}
@@ -436,7 +428,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 // AddPolicy adds a policy rule to the storage.
 func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 	line := a.savePolicyLine(ptype, rule)
-	err := a.db.Create(&line).Error
+	err := a.db.Scopes(a.casbinRuleTable()).Create(&line).Error
 	return err
 }
 
@@ -452,7 +444,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		for _, rule := range rules {
 			line := a.savePolicyLine(ptype, rule)
-			if err := tx.Create(&line).Error; err != nil {
+			if err := tx.Scopes(a.casbinRuleTable()).Create(&line).Error; err != nil {
 				return err
 			}
 		}
@@ -460,7 +452,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 	})
 }
 
-// RemovePolicy removes multiple policy rules from the storage.
+// RemovePolicies removes multiple policy rules from the storage.
 func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) error {
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		for _, rule := range rules {
@@ -529,6 +521,6 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 		queryArgs = append(queryArgs, line.V5)
 	}
 	args := append([]interface{}{queryStr}, queryArgs...)
-	err := db.Delete(a.getTableInstance(), args...).Error
+	err := db.Scopes(a.casbinRuleTable()).Delete(a.getTableInstance(), args...).Error
 	return err
 }
