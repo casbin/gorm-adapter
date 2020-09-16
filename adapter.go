@@ -16,6 +16,9 @@ package gormadapter
 
 import (
 	"errors"
+	"runtime"
+	"strings"
+
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/jackc/pgconn"
@@ -23,13 +26,11 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
-	"runtime"
-	"strings"
 )
 
 type CasbinRule struct {
 	TablePrefix string `gorm:"-"`
-	TableName	string `gorm:"-"`
+	TableName   string `gorm:"-"`
 	PType       string `gorm:"size:100"`
 	V0          string `gorm:"size:100"`
 	V1          string `gorm:"size:100"`
@@ -49,14 +50,13 @@ type Filter struct {
 	V5    []string
 }
 
-
 // Adapter represents the Gorm adapter for policy storage.
 type Adapter struct {
 	tablePrefix    string
 	driverName     string
 	dataSourceName string
 	databaseName   string
-	tableName	   string
+	tableName      string
 	dbSpecified    bool
 	db             *gorm.DB
 	isFiltered     bool
@@ -85,7 +85,7 @@ func finalizer(a *Adapter) {
 // It's up to whether you have specified an existing DB in dataSourceName.
 // If dbSpecified == true, you need to make sure the DB in dataSourceName exists.
 // If dbSpecified == false, the adapter will automatically create a DB named databaseName.
-func NewAdapter(driverName string, dataSourceName string,params ...interface{}) (*Adapter, error) {
+func NewAdapter(driverName string, dataSourceName string, params ...interface{}) (*Adapter, error) {
 	a := &Adapter{}
 	a.driverName = driverName
 	a.dataSourceName = dataSourceName
@@ -96,8 +96,8 @@ func NewAdapter(driverName string, dataSourceName string,params ...interface{}) 
 
 	if len(params) == 0 {
 
-	}else if len(params) == 1 {
-		switch p1:=params[0].(type) {
+	} else if len(params) == 1 {
+		switch p1 := params[0].(type) {
 		case bool:
 			a.dbSpecified = p1
 		case string:
@@ -105,35 +105,35 @@ func NewAdapter(driverName string, dataSourceName string,params ...interface{}) 
 		default:
 			return nil, errors.New("wrong format")
 		}
-	}else if len(params) == 2 {
+	} else if len(params) == 2 {
 		switch p2 := params[1].(type) {
 		case bool:
 			a.dbSpecified = p2
 			p1, ok := params[0].(string)
 			if !ok {
-				return nil,errors.New("wrong format")
+				return nil, errors.New("wrong format")
 			}
 			a.databaseName = p1
 		case string:
 			p1, ok := params[0].(string)
 			if !ok {
-				return nil,errors.New("wrong format")
+				return nil, errors.New("wrong format")
 			}
 			a.databaseName = p1
 			a.tableName = p2
 		default:
-			return nil,errors.New("wrong format")
+			return nil, errors.New("wrong format")
 		}
-	}else if len(params) == 3 {
+	} else if len(params) == 3 {
 		if p3, ok := params[2].(bool); ok {
 			a.dbSpecified = p3
 			a.databaseName = params[0].(string)
 			a.tableName = params[1].(string)
-		}else {
-			return nil,errors.New("wrong format")
+		} else {
+			return nil, errors.New("wrong format")
 		}
-	}else {
-		return nil,errors.New("too many parameters")
+	} else {
+		return nil, errors.New("too many parameters")
 	}
 
 	// Open the DB, create it if not existed.
@@ -150,10 +150,10 @@ func NewAdapter(driverName string, dataSourceName string,params ...interface{}) 
 
 // NewAdapterByDB obtained through an existing Gorm instance get  a adapter, specify the table prefix and the table name
 // Example: gormadapter.NewAdapterByDBUseTableName(&db, "cms", "casbin") Automatically generate table name like this "cms_casbin"
-func NewAdapterByDBUseTableName(db *gorm.DB, prefix string,tablename string) (*Adapter, error) {
+func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*Adapter, error) {
 	a := &Adapter{
 		tablePrefix: prefix,
-		db:          db.Scopes(CasbinTableName(&CasbinRule{TablePrefix: prefix,TableName:tablename})),
+		db:          db.Scopes(CasbinTableName(&CasbinRule{TablePrefix: prefix, TableName: tablename})),
 	}
 
 	err := a.createTable()
@@ -184,8 +184,8 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 		db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{})
 	} else if driverName == "mysql" {
 		db, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
-	//} else if driverName == "sqlite3" {
-	//	db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+		//} else if driverName == "sqlite3" {
+		//	db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
 	} else if driverName == "sqlserver" {
 		db, err = gorm.Open(sqlserver.Open(dataSourceName), &gorm.Config{})
 	} else {
@@ -204,7 +204,7 @@ func (a *Adapter) createDatabase() error {
 		return err
 	}
 	if a.driverName == "postgres" {
-		if err = db.Exec("CREATE DATABASE "+ a.databaseName).Error; err != nil {
+		if err = db.Exec("CREATE DATABASE " + a.databaseName).Error; err != nil {
 			// 42P04 is	duplicate_database
 			if err.(*pgconn.PgError).Code == "42P04" {
 				return nil
@@ -243,7 +243,7 @@ func (a *Adapter) open() error {
 			return err
 		}
 	}
-	a.db = db.Scopes(CasbinTableName(&CasbinRule{TableName:a.tableName,TablePrefix:a.tablePrefix})).
+	a.db = db.Scopes(CasbinTableName(&CasbinRule{TableName: a.tableName, TablePrefix: a.tablePrefix})).
 		Session(&gorm.Session{WithConditions: true})
 	return a.createTable()
 }
@@ -258,10 +258,10 @@ func (a *Adapter) getTableInstance() *CasbinRule {
 	return &CasbinRule{}
 }
 
-func CasbinTableName(c *CasbinRule) func (db *gorm.DB) *gorm.DB {
-	return func (db *gorm.DB) *gorm.DB {
-		if c.TablePrefix!="" {
-			return db.Table(c.TablePrefix+"_"+c.TableName)
+func CasbinTableName(c *CasbinRule) func(db *gorm.DB) *gorm.DB {
+	return func(db *gorm.DB) *gorm.DB {
+		if c.TablePrefix != "" {
+			return db.Table(c.TablePrefix + "_" + c.TableName)
 		}
 		return db.Table(c.TableName)
 	}

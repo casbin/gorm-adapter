@@ -15,8 +15,6 @@
 package gormadapter
 
 import (
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
 	"log"
 	"testing"
 
@@ -25,6 +23,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -189,7 +189,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 }
 
 func TestAdapters(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/","casbin","casbin_rule")
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
