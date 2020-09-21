@@ -15,8 +15,6 @@
 package gormadapter
 
 import (
-	"gorm.io/driver/mysql"
-	"gorm.io/driver/postgres"
 	"log"
 	"testing"
 
@@ -25,6 +23,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"gorm.io/driver/mysql"
+	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
 
@@ -98,6 +98,18 @@ func initAdapter(t *testing.T, driverName string, dataSourceName string, params 
 func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 	// Create an adapter
 	a, _ := NewAdapterByDB(db)
+	// Initialize some policy in DB.
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
+	// Note: you don't need to look at the above code
+	// if you already have a working DB with policy inside.
+
+	return a
+}
+
+func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *Adapter {
+	//Create an Adapter
+	a, _ := NewAdapterByDBUseTableName(db, "", name)
 	// Initialize some policy in DB.
 	initPolicy(t, a)
 	// Now the DB has policy, so we can provide a normal use case.
@@ -189,7 +201,7 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 }
 
 func TestAdapters(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/","casbin","casbin_rule")
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
@@ -217,5 +229,27 @@ func TestAdapters(t *testing.T) {
 	testSaveLoad(t, a)
 
 	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
 	testFilteredPolicy(t, a)
 }
