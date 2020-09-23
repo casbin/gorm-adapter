@@ -151,16 +151,16 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	return a, nil
 }
 
-// NewAdapterByDBUseTableName obtained through an existing Gorm instance get  a adapter, specify the table prefix and the table name
+// NewAdapterByDBUseTableName creates gorm-adapter by an existing Gorm instance and the specified table prefix and table name
 // Example: gormadapter.NewAdapterByDBUseTableName(&db, "cms", "casbin") Automatically generate table name like this "cms_casbin"
-func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*Adapter, error) {
-	if len(tablename) == 0 {
-		tablename = defaultTableName
+func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*Adapter, error) {
+	if len(tableName) == 0 {
+		tableName = defaultTableName
 	}
 
 	a := &Adapter{
 		tablePrefix: prefix,
-		tableName:   tablename,
+		tableName:   tableName,
 	}
 
 	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
@@ -172,7 +172,7 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tablename string) (*
 	return a, nil
 }
 
-// NewAdapterByDB obtained through an existing Gorm instance get  a adapter
+// NewAdapterByDB creates gorm-adapter by an existing Gorm instance
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
