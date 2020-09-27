@@ -34,6 +34,7 @@ const (
 )
 
 type CasbinRule struct {
+	ID    uint   `gorm:"primaryKey;autoIncrement"`
 	PType string `gorm:"size:40;uniqueIndex:unique_index"`
 	V0    string `gorm:"size:40;uniqueIndex:unique_index"`
 	V1    string `gorm:"size:40;uniqueIndex:unique_index"`
@@ -300,7 +301,7 @@ func loadPolicyLine(line CasbinRule, model model.Model) {
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
 	var lines []CasbinRule
-	if err := a.db.Find(&lines).Error; err != nil {
+	if err := a.db.Order("ID").Find(&lines).Error; err != nil {
 		return err
 	}
 
@@ -320,7 +321,7 @@ func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) erro
 		return errors.New("invalid filter type")
 	}
 
-	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Find(&lines).Error; err != nil {
+	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Order("ID").Find(&lines).Error; err != nil {
 		return err
 	}
 
