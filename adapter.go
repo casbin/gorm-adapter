@@ -245,7 +245,7 @@ func (a *Adapter) open() error {
 		}
 	}
 
-	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{})
 	return a.createTable()
 }
 
