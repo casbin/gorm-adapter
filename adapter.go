@@ -164,7 +164,7 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 		tableName:   tableName,
 	}
 
-	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{})
 	err := a.createTable()
 	if err != nil {
 		return nil, err
@@ -245,7 +245,7 @@ func (a *Adapter) open() error {
 		}
 	}
 
-	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{WithConditions: true})
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{})
 	return a.createTable()
 }
 
