@@ -173,6 +173,17 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 	return a, nil
 }
 
+// NewFilteredAdapter is the constructor for FilteredAdapter.
+// Casbin will not automatically call LoadPolicy() for a filtered adapter.
+func NewFilteredAdapter(driverName string, dataSourceName string, params ...interface{}) (*Adapter, error) {
+	adapter, err := NewAdapter(driverName, dataSourceName, params...)
+	if err != nil {
+		return nil, err
+	}
+	adapter.isFiltered = true
+	return adapter, err
+}
+
 // NewAdapterByDB creates gorm-adapter by an existing Gorm instance
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
