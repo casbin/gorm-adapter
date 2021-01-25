@@ -3,7 +3,7 @@ module github.com/casbin/gorm-adapter/v3
 go 1.14
 
 require (
-	github.com/casbin/casbin/v2 v2.12.0
+	github.com/casbin/casbin/v2 v2.21.0
 	github.com/go-sql-driver/mysql v1.5.0
 	github.com/jackc/pgconn v1.6.4
 	github.com/lib/pq v1.8.0

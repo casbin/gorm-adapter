@@ -525,3 +525,43 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 	err := db.Delete(a.getTableInstance(), args...).Error
 	return err
 }
+
+func appendWhere(line CasbinRule) (string, []interface{}) {
+	queryArgs := []interface{}{line.PType}
+
+	queryStr := "p_type = ?"
+	if line.V0 != "" {
+		queryStr += " and v0 = ?"
+		queryArgs = append(queryArgs, line.V0)
+	}
+	if line.V1 != "" {
+		queryStr += " and v1 = ?"
+		queryArgs = append(queryArgs, line.V1)
+	}
+	if line.V2 != "" {
+		queryStr += " and v2 = ?"
+		queryArgs = append(queryArgs, line.V2)
+	}
+	if line.V3 != "" {
+		queryStr += " and v3 = ?"
+		queryArgs = append(queryArgs, line.V3)
+	}
+	if line.V4 != "" {
+		queryStr += " and v4 = ?"
+		queryArgs = append(queryArgs, line.V4)
+	}
+	if line.V5 != "" {
+		queryStr += " and v5 = ?"
+		queryArgs = append(queryArgs, line.V5)
+	}
+	return queryStr, queryArgs
+}
+
+// UpdatePolicy updates a new policy rule to DB.
+func (a *Adapter) UpdatePolicy(sec string, ptype string, oldRule, newPolicy []string) error {
+	oldLine := a.savePolicyLine(ptype, oldRule)
+	queryStr, queryArgs := appendWhere(oldLine)
+	newLine := a.savePolicyLine(ptype, newPolicy)
+	err := a.db.Where(queryStr, queryArgs...).Updates(newLine).Error
+	return err
+}
