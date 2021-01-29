@@ -35,7 +35,7 @@ const (
 
 type CasbinRule struct {
 	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	PType string `gorm:"size:100;uniqueIndex:unique_index"`
+	Ptype string `gorm:"size:100;uniqueIndex:unique_index"`
 	V0    string `gorm:"size:100;uniqueIndex:unique_index"`
 	V1    string `gorm:"size:100;uniqueIndex:unique_index"`
 	V2    string `gorm:"size:100;uniqueIndex:unique_index"`
@@ -288,7 +288,7 @@ func (a *Adapter) dropTable() error {
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
-	var p = []string{line.PType,
+	var p = []string{line.Ptype,
 		line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
 
 	var lineText string
@@ -353,7 +353,7 @@ func (a *Adapter) IsFiltered() bool {
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if len(filter.PType) > 0 {
-			db = db.Where("p_type in (?)", filter.PType)
+			db = db.Where("ptype in (?)", filter.PType)
 		}
 		if len(filter.V0) > 0 {
 			db = db.Where("v0 in (?)", filter.V0)
@@ -380,7 +380,7 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 	line := a.getTableInstance()
 
-	line.PType = ptype
+	line.Ptype = ptype
 	if len(rule) > 0 {
 		line.V0 = rule[0]
 	}
@@ -481,7 +481,7 @@ func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) err
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := a.getTableInstance()
 
-	line.PType = ptype
+	line.Ptype = ptype
 	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
 		line.V0 = fieldValues[0-fieldIndex]
 	}
@@ -505,9 +505,9 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 }
 
 func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
-	queryArgs := []interface{}{line.PType}
+	queryArgs := []interface{}{line.Ptype}
 
-	queryStr := "p_type = ?"
+	queryStr := "ptype = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
@@ -538,9 +538,9 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 }
 
 func appendWhere(line CasbinRule) (string, []interface{}) {
-	queryArgs := []interface{}{line.PType}
+	queryArgs := []interface{}{line.Ptype}
 
-	queryStr := "p_type = ?"
+	queryStr := "ptype = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
