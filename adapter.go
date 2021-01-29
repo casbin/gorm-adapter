@@ -35,7 +35,7 @@ const (
 
 type CasbinRule struct {
 	ID    uint   `gorm:"primaryKey;autoIncrement"`
-	PType string `gorm:"size:100;uniqueIndex:unique_index"`
+	PType string `gorm:"size:100;uniqueIndex:unique_index;column:ptype"`
 	V0    string `gorm:"size:100;uniqueIndex:unique_index"`
 	V1    string `gorm:"size:100;uniqueIndex:unique_index"`
 	V2    string `gorm:"size:100;uniqueIndex:unique_index"`
@@ -353,7 +353,7 @@ func (a *Adapter) IsFiltered() bool {
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
 		if len(filter.PType) > 0 {
-			db = db.Where("p_type in (?)", filter.PType)
+			db = db.Where("ptype in (?)", filter.PType)
 		}
 		if len(filter.V0) > 0 {
 			db = db.Where("v0 in (?)", filter.V0)
@@ -507,7 +507,7 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 	queryArgs := []interface{}{line.PType}
 
-	queryStr := "p_type = ?"
+	queryStr := "ptype = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
@@ -540,7 +540,7 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 func appendWhere(line CasbinRule) (string, []interface{}) {
 	queryArgs := []interface{}{line.PType}
 
-	queryStr := "p_type = ?"
+	queryStr := "ptype = ?"
 	if line.V0 != "" {
 		queryStr += " and v0 = ?"
 		queryArgs = append(queryArgs, line.V0)
