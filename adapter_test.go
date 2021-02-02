@@ -15,6 +15,7 @@
 package gormadapter
 
 import (
+	"github.com/jackc/pgconn"
 	"log"
 	"testing"
 
@@ -98,6 +99,29 @@ func initAdapter(t *testing.T, driverName string, dataSourceName string, params 
 func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 	// Create an adapter
 	a, _ := NewAdapterByDB(db)
+	// Initialize some policy in DB.
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
+	// Note: you don't need to look at the above code
+	// if you already have a working DB with policy inside.
+
+	return a
+}
+
+func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapter {
+	type CasbinRule struct {
+		ID    uint   `gorm:"primaryKey;autoIncrement"`
+		Ptype string `gorm:"size:128;uniqueIndex:unique_index"`
+		V0    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V1    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V2    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V3    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V4    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V5    string `gorm:"size:128;uniqueIndex:unique_index"`
+	}
+
+	// Create an adapter
+	a, _ := NewAdapterByDBWithCustomTable(db, &CasbinRule{})
 	// Initialize some policy in DB.
 	initPolicy(t, a)
 	// Now the DB has policy, so we can provide a normal use case.
@@ -208,6 +232,32 @@ func testUpdatePolicy(t *testing.T, a *Adapter) {
 	e.UpdatePolicy([]string{"alice", "data1", "read"}, []string{"alice", "data1", "write"})
 	e.LoadPolicy()
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "write"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
+}
+
+func TestAdapterWithCustomTable(t *testing.T) {
+	db, err := gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	if err = db.Exec("CREATE DATABASE casbin_custom_table").Error; err != nil {
+		// 42P04 is	duplicate_database
+		if err.(*pgconn.PgError).Code != "42P04" {
+			panic(err)
+		}
+	}
+
+	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a := initAdapterWithGormInstanceAndCustomTable(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstanceAndCustomTable(t, db)
+	testFilteredPolicy(t, a)
 }
 
 func TestAdapters(t *testing.T) {
