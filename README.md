@@ -63,6 +63,52 @@ func main() {
 }
 ```
 
+## Customize table columns example
+You can change the gorm struct tags, but the table structure must stay the same.
+```go
+package main
+
+import (
+	"github.com/casbin/casbin/v2"
+	gormadapter "github.com/casbin/gorm-adapter/v3"
+	"gorm.io/gorm"
+)
+
+func main() {
+	// Increase the column size to 512.
+	type CasbinRule struct {
+		ID    uint   `gorm:"primaryKey;autoIncrement"`
+		Ptype string `gorm:"size:512;uniqueIndex:unique_index"`
+		V0    string `gorm:"size:512;uniqueIndex:unique_index"`
+		V1    string `gorm:"size:512;uniqueIndex:unique_index"`
+		V2    string `gorm:"size:512;uniqueIndex:unique_index"`
+		V3    string `gorm:"size:512;uniqueIndex:unique_index"`
+		V4    string `gorm:"size:512;uniqueIndex:unique_index"`
+		V5    string `gorm:"size:512;uniqueIndex:unique_index"`
+	}
+
+	db, _ := gorm.Open(...)
+
+	// Initialize a Gorm adapter and use it in a Casbin enforcer:
+	// The adapter will use an existing gorm.DB instnace.
+	a, _ := gormadapter.NewAdapterByDBWithCustomTable(db, &CasbinRule{}) 
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	
+	// Load the policy from DB.
+	e.LoadPolicy()
+	
+	// Check the permission.
+	e.Enforce("alice", "data1", "read")
+	
+	// Modify the policy.
+	// e.AddPolicy(...)
+	// e.RemovePolicy(...)
+	
+	// Save the policy back to DB.
+	e.SavePolicy()
+}
+```
+
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)

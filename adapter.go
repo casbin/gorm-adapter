@@ -15,6 +15,7 @@
 package gormadapter
 
 import (
+	"context"
 	"errors"
 	"runtime"
 	"strings"
@@ -32,6 +33,8 @@ const (
 	defaultDatabaseName = "casbin"
 	defaultTableName    = "casbin_rule"
 )
+
+type customTableKey struct{}
 
 type CasbinRule struct {
 	ID    uint   `gorm:"primaryKey;autoIncrement"`
@@ -164,7 +167,7 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 		tableName:   tableName,
 	}
 
-	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{})
+	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{Context: db.Statement.Context})
 	err := a.createTable()
 	if err != nil {
 		return nil, err
@@ -187,6 +190,17 @@ func NewFilteredAdapter(driverName string, dataSourceName string, params ...inte
 // NewAdapterByDB creates gorm-adapter by an existing Gorm instance
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
+}
+
+func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}) (*Adapter, error) {
+	ctx := db.Statement.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx = context.WithValue(ctx, customTableKey{}, t)
+
+	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", defaultTableName)
 }
 
 func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
@@ -280,11 +294,21 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 }
 
 func (a *Adapter) createTable() error {
-	return a.db.AutoMigrate(a.getTableInstance())
+	t := a.db.Statement.Context.Value(customTableKey{})
+	if t == nil {
+		return a.db.AutoMigrate(a.getTableInstance())
+	}
+
+	return a.db.AutoMigrate(t)
 }
 
 func (a *Adapter) dropTable() error {
-	return a.db.Migrator().DropTable(a.getTableInstance())
+	t := a.db.Statement.Context.Value(customTableKey{})
+	if t == nil {
+		return a.db.Migrator().DropTable(a.getTableInstance())
+	}
+
+	return a.db.Migrator().DropTable(t)
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
