@@ -16,6 +16,7 @@ package gormadapter
 
 import (
 	"github.com/jackc/pgconn"
+	"gorm.io/driver/sqlite"
 	"log"
 	"testing"
 
@@ -269,6 +270,10 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
+	a = initAdapter(t, "sqlite3", "casbin.db")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
 	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
@@ -281,6 +286,17 @@ func TestAdapters(t *testing.T) {
 	testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstance(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -313,6 +329,20 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
 	testFilteredPolicy(t, a)
 
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testFilteredPolicy(t, a)
+
 	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	testUpdatePolicy(t, a)
+
+	a = initAdapter(t, "sqlite3", "casbin.db")
 	testUpdatePolicy(t, a)
 }
