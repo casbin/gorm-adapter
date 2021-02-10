@@ -298,26 +298,20 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 func (a *Adapter) createTable() error {
 	t := a.db.Statement.Context.Value(customTableKey{})
 
+	if t == nil {
+		t = a.getTableInstance()
+	}
+
+	if err := a.db.AutoMigrate(t); err != nil {
+		return err
+	}
+
 	tableName := a.tableName
 	if a.tablePrefix != "" {
 		tableName = a.tablePrefix + "_" + tableName
 	}
 	index := "idx_" + tableName
-
-	hasIndex := false
-	if t == nil {
-		instance := a.getTableInstance()
-		hasIndex = a.db.Migrator().HasIndex(instance, index)
-		if err := a.db.AutoMigrate(instance); err != nil {
-			return err
-		}
-	} else {
-		hasIndex = a.db.Migrator().HasIndex(t, index)
-		if err := a.db.AutoMigrate(t); err != nil {
-			return err
-		}
-	}
-
+	hasIndex := a.db.Migrator().HasIndex(t, index)
 	if !hasIndex {
 		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (ptype,v0,v1,v2,v3,v4,v5)", index, tableName)).Error; err != nil {
 			return err
