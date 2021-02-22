@@ -144,6 +144,18 @@ func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *
 	return a
 }
 
+func initAdapterWithGormInstanceByPrefixAndName(t *testing.T, db *gorm.DB, prefix, name string) *Adapter {
+	//Create an Adapter
+	a, _ := NewAdapterByDBUseTableName(db, prefix, name)
+	// Initialize some policy in DB.
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
+	// Note: you don't need to look at the above code
+	// if you already have a working DB with policy inside.
+
+	return a
+}
+
 //func TestNilField(t *testing.T) {
 //	a, err := NewAdapter("sqlite3", "test.db")
 //	assert.Nil(t, err)
@@ -327,6 +339,13 @@ func TestAdapters(t *testing.T) {
 	testSaveLoad(t, a)
 
 	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testFilteredPolicy(t, a)
+
+	a = initAdapterWithGormInstanceByPrefixAndName(t, db, "casbin", "first")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithGormInstanceByPrefixAndName(t, db, "casbin", "second")
 	testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
