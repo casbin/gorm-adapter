@@ -1,6 +1,11 @@
 Gorm Adapter
 ====
 
+> In v3.0.3, method `NewAdapterByDB` creates table named `casbin_rules`,  
+> we fix it to `casbin_rule` after that.  
+> If you used v3.0.3 and less, and you want to update it,  
+> you might need to *migrate* data manually.
+
 [![Go Report Card](https://goreportcard.com/badge/github.com/casbin/gorm-adapter)](https://goreportcard.com/report/github.com/casbin/gorm-adapter)
 [![Build Status](https://travis-ci.com/casbin/gorm-adapter.svg?branch=master)](https://travis-ci.com/casbin/gorm-adapter)
 [![Coverage Status](https://coveralls.io/repos/github/casbin/gorm-adapter/badge.svg?branch=master)](https://coveralls.io/github/casbin/gorm-adapter?branch=master)
