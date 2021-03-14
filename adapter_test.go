@@ -15,18 +15,18 @@
 package gormadapter
 
 import (
-	"github.com/jackc/pgconn"
-	"gorm.io/driver/sqlite"
 	"log"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/jackc/pgconn"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
