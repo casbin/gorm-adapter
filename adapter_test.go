@@ -248,7 +248,7 @@ func testUpdatePolicy(t *testing.T, a *Adapter) {
 }
 
 func TestAdapterWithCustomTable(t *testing.T) {
-	db, err := gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
+	db, err := gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -260,7 +260,7 @@ func TestAdapterWithCustomTable(t *testing.T) {
 		}
 	}
 
-	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -278,7 +278,7 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	a = initAdapter(t, "postgres", "user=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	a = initAdapter(t, "postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
@@ -297,7 +297,7 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -330,7 +330,7 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(postgres.Open("user=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
