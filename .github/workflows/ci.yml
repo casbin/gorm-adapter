@@ -1,0 +1,59 @@
+name: Go
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+
+  test:
+    runs-on: ubuntu-latest
+
+    services: 
+      mysql:
+        image: mysql
+        env:
+          MYSQL_ALLOW_EMPTY_PASSWORD: yes
+          MYSQL_DATABASE: casbin
+        ports:
+          - 3306:3306
+      postgres:
+        image: postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Set up Go
+        uses: actions/setup-go@v2
+        with:
+          go-version: 1.14
+
+      - uses: actions/checkout@v2
+      - name: Run Unit tests
+        run: go test -v -coverprofile=./profile.cov ./...
+
+      #- uses: actions/checkout@v2
+      #- uses: shogo82148/actions-goveralls@v1
+      #  with:
+      #    path-to-profile: ./profile.cov
+
+  semantic-release:
+    needs: [test]
+    runs-on: ubuntu-latest
+    steps:
+
+      - uses: actions/checkout@v2
+      - name: Run semantic-release
+        uses: go-semantic-release/action@v1
+        if: github.repository == 'casbin/gorm-adapter' && github.event_name == 'push'
+        with:
+          github-token: ${{ secrets.GH_TOKEN }} 

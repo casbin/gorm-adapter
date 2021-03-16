@@ -143,7 +143,7 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 		} else {
 			return nil, errors.New("wrong format")
 		}
-	} else {
+	} else if len(params) != 0{
 		return nil, errors.New("too many parameters")
 	}
 
