@@ -1,0 +1,58 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  test:
+    name: 'Testing'
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go: 
+          - '1.14'
+          - '1.13'
+          - '1.12' 
+    steps:
+    - name: Checkout repo
+      uses: actions/checkout@v2
+    - name: Setup Go
+      uses: actions/setup-go@v1.1.2
+      with:
+        go-version: '${{ matrix.go }}'
+    - name: Invoking go test
+      run: go test adapter_test.go      
+
+  release:
+    name: 'Release to GitHub'
+    runs-on: ubuntu-latest
+    needs: 
+      - test
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v2
+      - name: Setup Go
+        uses: actions/setup-go@v1.1.2
+        with:
+          go-version: '1.14'
+      - name: Invoking go vet and binaries generation
+        run: |
+          go vet ./...
+          GOOS=darwin GOARCH=amd64 go build -o=.github/workflows/asyncapi-parser.darwin.amd64 ./cmd/api-parser/main.go
+          GOOS=linux GOARCH=amd64 go build -o=.github/workflows/asyncapi-parser.linux.amd64 ./cmd/api-parser/main.go
+          GOOS=windows GOARCH=amd64 go build -o=.github/workflows/asyncapi-parser.windows.amd64.exe ./cmd/api-parser/main.go
+      - name: Setup Node.js
+        uses: actions/setup-node@v1
+        with:
+          node-version: 13
+      - name: Add plugin for conventional commits
+        run: npm install conventional-changelog-conventionalcommits
+        working-directory: ./.github/workflows
+      - name: Release to GitHub
+        working-directory: ./.github/workflows
+        env:
+          GITHUB_TOKEN: ${{ secrets.GH_TOKEN }}
+        run: npx semantic-release
+
