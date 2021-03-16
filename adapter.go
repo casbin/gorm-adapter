@@ -107,9 +107,7 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	a.databaseName = defaultDatabaseName
 	a.dbSpecified = false
 
-	if len(params) == 0 {
-
-	} else if len(params) == 1 {
+	if len(params) == 1 {
 		switch p1 := params[0].(type) {
 		case bool:
 			a.dbSpecified = p1
