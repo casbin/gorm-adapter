@@ -305,10 +305,11 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 func (a *Adapter) createTable() error {
 	t := a.db.Statement.Context.Value(customTableKey{})
 
-	if t == nil {
-		t = a.getTableInstance()
+	if t != nil {
+		return a.db.AutoMigrate(t)
 	}
 
+	t = a.getTableInstance()
 	if err := a.db.AutoMigrate(t); err != nil {
 		return err
 	}
