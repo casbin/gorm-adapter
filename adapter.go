@@ -143,7 +143,7 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 		} else {
 			return nil, errors.New("wrong format")
 		}
-	} else if len(params) != 0{
+	} else if len(params) != 0 {
 		return nil, errors.New("too many parameters")
 	}
 
@@ -618,8 +618,25 @@ func appendWhere(line CasbinRule) (string, []interface{}) {
 // UpdatePolicy updates a new policy rule to DB.
 func (a *Adapter) UpdatePolicy(sec string, ptype string, oldRule, newPolicy []string) error {
 	oldLine := a.savePolicyLine(ptype, oldRule)
-	queryStr, queryArgs := appendWhere(oldLine)
 	newLine := a.savePolicyLine(ptype, newPolicy)
-	err := a.db.Where(queryStr, queryArgs...).Updates(newLine).Error
-	return err
+	return a.db.Model(&oldLine).Where(&oldLine).Updates(newLine).Error
+}
+
+func (a *Adapter) UpdatePolicies(sec string, ptype string, oldRules, newRules [][]string) error {
+	oldPolicies := make([]CasbinRule, 0, len(oldRules))
+	newPolicies := make([]CasbinRule, 0, len(oldRules))
+	for _, oldRule := range oldRules {
+		oldPolicies = append(oldPolicies, a.savePolicyLine(ptype, oldRule))
+	}
+	for _, newRule := range newRules {
+		newPolicies = append(newPolicies, a.savePolicyLine(ptype, newRule))
+	}
+	tx := a.db.Begin()
+	for i := range oldPolicies {
+		if err := tx.Model(&oldPolicies[i]).Where(&oldPolicies[i]).Updates(newPolicies[i]).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
 }
