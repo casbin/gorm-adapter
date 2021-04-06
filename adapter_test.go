@@ -26,7 +26,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/gorm"
 )
 
@@ -292,9 +291,9 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	a = initAdapter(t, "sqlite3", "casbin.db")
-	testAutoSave(t, a)
-	testSaveLoad(t, a)
+	//a = initAdapter(t, "sqlite3", "casbin.db")
+	//testAutoSave(t, a)
+	//testSaveLoad(t, a)
 
 	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -318,16 +317,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
-	a = initAdapterWithGormInstance(t, db)
-	testAutoSave(t, a)
-	testSaveLoad(t, a)
+	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	//if err != nil {
+	//	panic(err)
+	//}
+	//a = initAdapterWithGormInstance(t, db)
+	//testAutoSave(t, a)
+	//testSaveLoad(t, a)
 
-	a = initAdapterWithGormInstance(t, db)
-	testFilteredPolicy(t, a)
+	//a = initAdapterWithGormInstance(t, db)
+	//testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -358,16 +357,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstanceByPrefixAndName(t, db, "casbin", "second")
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	if err != nil {
-		panic(err)
-	}
-	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	testAutoSave(t, a)
-	testSaveLoad(t, a)
+	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	//if err != nil {
+	//	panic(err)
+	//}
+	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	//testAutoSave(t, a)
+	//testSaveLoad(t, a)
 
-	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	testFilteredPolicy(t, a)
+	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	//testFilteredPolicy(t, a)
 
 	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testUpdatePolicy(t, a)
@@ -377,7 +376,7 @@ func TestAdapters(t *testing.T) {
 	testUpdatePolicy(t, a)
 	testUpdatePolicies(t, a)
 
-	a = initAdapter(t, "sqlite3", "casbin.db")
-	testUpdatePolicy(t, a)
-	testUpdatePolicies(t, a)
+	//a = initAdapter(t, "sqlite3", "casbin.db")
+	//testUpdatePolicy(t, a)
+	//testUpdatePolicies(t, a)
 }
