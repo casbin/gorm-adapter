@@ -26,7 +26,6 @@ import (
 	"github.com/jackc/pgconn"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
-	"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 )
@@ -216,8 +215,8 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 		db, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
 	} else if driverName == "sqlserver" {
 		db, err = gorm.Open(sqlserver.Open(dataSourceName), &gorm.Config{})
-	} else if driverName == "sqlite3" {
-		db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+		//} else if driverName == "sqlite3" {
+		//	db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
 	} else {
 		return nil, errors.New("database dialect is not supported")
 	}
