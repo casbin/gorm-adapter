@@ -54,7 +54,7 @@ func (CasbinRule) TableName() string {
 }
 
 type Filter struct {
-	PType []string
+	Ptype []string
 	V0    []string
 	V1    []string
 	V2    []string
@@ -399,8 +399,8 @@ func (a *Adapter) IsFiltered() bool {
 // filterQuery builds the gorm query to match the rule filter to use within a scope.
 func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gorm.DB {
 	return func(db *gorm.DB) *gorm.DB {
-		if len(filter.PType) > 0 {
-			db = db.Where("ptype in (?)", filter.PType)
+		if len(filter.Ptype) > 0 {
+			db = db.Where("ptype in (?)", filter.Ptype)
 		}
 		if len(filter.V0) > 0 {
 			db = db.Where("v0 in (?)", filter.V0)
