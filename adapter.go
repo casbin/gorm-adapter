@@ -219,7 +219,7 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 		//} else if driverName == "sqlite3" {
 		//	db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
 	} else {
-		return nil, errors.New("Database dialect '"+driverName+"' is not supported. Supported databases are postgres, mysql and sqlserver")
+		return nil, errors.New("Database dialect '" + driverName + "' is not supported. Supported databases are postgres, mysql and sqlserver")
 	}
 	if err != nil {
 		return nil, err
@@ -639,4 +639,119 @@ func (a *Adapter) UpdatePolicies(sec string, ptype string, oldRules, newRules []
 		}
 	}
 	return tx.Commit().Error
+}
+
+func (a *Adapter) UpdateFilteredPolicies(sec string, ptype string, newPolicies [][]string, fieldIndex int, fieldValues ...string) ([][]string, error) {
+	// UpdateFilteredPolicies deletes old rules and adds new rules.
+	line := a.getTableInstance()
+
+	line.Ptype = ptype
+	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
+		line.V0 = fieldValues[0-fieldIndex]
+	}
+	if fieldIndex <= 1 && 1 < fieldIndex+len(fieldValues) {
+		line.V1 = fieldValues[1-fieldIndex]
+	}
+	if fieldIndex <= 2 && 2 < fieldIndex+len(fieldValues) {
+		line.V2 = fieldValues[2-fieldIndex]
+	}
+	if fieldIndex <= 3 && 3 < fieldIndex+len(fieldValues) {
+		line.V3 = fieldValues[3-fieldIndex]
+	}
+	if fieldIndex <= 4 && 4 < fieldIndex+len(fieldValues) {
+		line.V4 = fieldValues[4-fieldIndex]
+	}
+	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
+		line.V5 = fieldValues[5-fieldIndex]
+	}
+
+	newP := make([]CasbinRule, 0, len(newPolicies))
+	oldP := make([]CasbinRule, 0)
+	for _, newRule := range newPolicies {
+		newP = append(newP, a.savePolicyLine(ptype, newRule))
+	}
+
+	tx := a.db.Begin()
+
+	for i := range newP {
+		str, args := line.queryString()
+		if err := tx.Where(str, args...).Find(&oldP).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		if err := tx.Where(str, args...).Delete([]CasbinRule{}).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+		if err := tx.Create(&newP[i]).Error; err != nil {
+			tx.Rollback()
+			return nil, err
+		}
+	}
+
+	// return deleted rulues
+	oldPolicies := make([][]string, 0)
+	for _, v := range oldP {
+		oldPolicy := v.toStringPolicy()
+		oldPolicies = append(oldPolicies, oldPolicy)
+	}
+	return oldPolicies, tx.Commit().Error
+}
+
+func (c *CasbinRule) queryString() (interface{}, []interface{}) {
+	queryArgs := []interface{}{c.Ptype}
+
+	queryStr := "ptype = ?"
+	if c.V0 != "" {
+		queryStr += " and v0 = ?"
+		queryArgs = append(queryArgs, c.V0)
+	}
+	if c.V1 != "" {
+		queryStr += " and v1 = ?"
+		queryArgs = append(queryArgs, c.V1)
+	}
+	if c.V2 != "" {
+		queryStr += " and v2 = ?"
+		queryArgs = append(queryArgs, c.V2)
+	}
+	if c.V3 != "" {
+		queryStr += " and v3 = ?"
+		queryArgs = append(queryArgs, c.V3)
+	}
+	if c.V4 != "" {
+		queryStr += " and v4 = ?"
+		queryArgs = append(queryArgs, c.V4)
+	}
+	if c.V5 != "" {
+		queryStr += " and v5 = ?"
+		queryArgs = append(queryArgs, c.V5)
+	}
+
+	return queryStr, queryArgs
+}
+
+func (c *CasbinRule) toStringPolicy() []string {
+	policy := make([]string, 0)
+	if c.Ptype != "" {
+		policy = append(policy, c.Ptype)
+	}
+	if c.V0 != "" {
+		policy = append(policy, c.V0)
+	}
+	if c.V1 != "" {
+		policy = append(policy, c.V1)
+	}
+	if c.V2 != "" {
+		policy = append(policy, c.V2)
+	}
+	if c.V3 != "" {
+		policy = append(policy, c.V3)
+	}
+	if c.V4 != "" {
+		policy = append(policy, c.V4)
+	}
+	if c.V5 != "" {
+		policy = append(policy, c.V5)
+	}
+	return policy
 }
