@@ -256,6 +256,17 @@ func testUpdatePolicies(t *testing.T, a *Adapter) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "read"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
 
+func testUpdateFilteredPolicies(t *testing.T, a *Adapter) {
+	// NewEnforcer() will load the policy automatically.
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+
+	e.EnableAutoSave(true)
+	e.UpdateFilteredPolicies([][]string{{"alice", "data1", "read"}}, 0, "alice", "data1", "write")
+	e.UpdateFilteredPolicies([][]string{{"bob", "data2", "read"}}, 0, "bob", "data2", "write")
+	e.LoadPolicy()
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"bob", "data2", "read"}})
+}
+
 func TestAdapterWithCustomTable(t *testing.T) {
 	db, err := gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
 	if err != nil {
@@ -371,10 +382,12 @@ func TestAdapters(t *testing.T) {
 	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testUpdatePolicy(t, a)
 	testUpdatePolicies(t, a)
+	testUpdateFilteredPolicies(t, a)
 
 	a = initAdapter(t, "postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable")
 	testUpdatePolicy(t, a)
 	testUpdatePolicies(t, a)
+	testUpdateFilteredPolicies(t, a)
 
 	//a = initAdapter(t, "sqlite3", "casbin.db")
 	//testUpdatePolicy(t, a)
