@@ -38,6 +38,50 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 	}
 }
 
+func testGetPolicyWithoutOrder(t *testing.T, e *casbin.Enforcer, res [][]string) {
+	myRes := e.GetPolicy()
+	log.Print("Policy: ", myRes)
+
+	if !arrayEqualsWithoutOrder(myRes, res) {
+		t.Error("Policy: ", myRes, ", supposed to be ", res)
+	}
+}
+
+func arrayEqualsWithoutOrder(a [][]string, b [][]string) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	mapA := make(map[int]string)
+	mapB := make(map[int]string)
+	order := make(map[int]struct{})
+	l := len(a)
+
+	for i := 0; i < l; i++ {
+		mapA[i] = util.ArrayToString(a[i])
+		mapB[i] = util.ArrayToString(b[i])
+	}
+
+	for i := 0; i < l; i++ {
+		for j := 0; j < l; j++ {
+			if _, ok := order[j]; ok {
+				if j == l-1 {
+					return false
+				} else {
+					continue
+				}
+			}
+			if mapA[i] == mapB[j] {
+				order[j] = struct{}{}
+				break
+			} else if j == l-1 {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 func initPolicy(t *testing.T, a *Adapter) {
 	// Because the DB is empty at first,
 	// so we need to load the policy from the file adapter (.CSV) first.
@@ -261,10 +305,10 @@ func testUpdateFilteredPolicies(t *testing.T, a *Adapter) {
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
 	e.EnableAutoSave(true)
-	e.UpdateFilteredPolicies([][]string{{"alice", "data1", "read"}}, 0, "alice", "data1", "write")
+	e.UpdateFilteredPolicies([][]string{{"alice", "data1", "write"}}, 0, "alice", "data1", "read")
 	e.UpdateFilteredPolicies([][]string{{"bob", "data2", "read"}}, 0, "bob", "data2", "write")
 	e.LoadPolicy()
-	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"bob", "data2", "read"}})
+	testGetPolicyWithoutOrder(t, e, [][]string{{"alice", "data1", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"bob", "data2", "read"}})
 }
 
 func TestAdapterWithCustomTable(t *testing.T) {
