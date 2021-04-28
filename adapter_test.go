@@ -16,6 +16,7 @@ package gormadapter
 
 import (
 	"log"
+	"os"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
@@ -27,6 +28,7 @@ import (
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
@@ -428,7 +430,19 @@ func TestAdapters(t *testing.T) {
 	testUpdatePolicies(t, a)
 	testUpdateFilteredPolicies(t, a)
 
+	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a.AddLogger(logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{}))
+	testUpdatePolicy(t, a)
+	testUpdatePolicies(t, a)
+	testUpdateFilteredPolicies(t, a)
+
 	a = initAdapter(t, "postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	testUpdatePolicy(t, a)
+	testUpdatePolicies(t, a)
+	testUpdateFilteredPolicies(t, a)
+
+	a = initAdapter(t, "postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable")
+	a.AddLogger(logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{}))
 	testUpdatePolicy(t, a)
 	testUpdatePolicies(t, a)
 	testUpdateFilteredPolicies(t, a)
