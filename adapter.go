@@ -26,9 +26,11 @@ import (
 	"github.com/jackc/pgconn"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
+
 	//"gorm.io/driver/sqlite"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
+	"gorm.io/gorm/logger"
 )
 
 const (
@@ -276,6 +278,11 @@ func (a *Adapter) open() error {
 
 	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{})
 	return a.createTable()
+}
+
+// AddLogger adds logger to db
+func (a *Adapter) AddLogger(l logger.Interface) {
+	a.db = a.db.Session(&gorm.Session{Logger: l, Context: a.db.Statement.Context})
 }
 
 func (a *Adapter) close() error {
