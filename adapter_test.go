@@ -121,7 +121,6 @@ func testSaveLoad(t *testing.T, a *Adapter) {
 	// Now the DB has policy, so we can provide a normal use case.
 	// Create an adapter and an enforcer.
 	// NewEnforcer() will load the policy automatically.
-
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
 }
@@ -180,6 +179,18 @@ func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapt
 func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *Adapter {
 	//Create an Adapter
 	a, _ := NewAdapterByDBUseTableName(db, "", name)
+	// Initialize some policy in DB.
+	initPolicy(t, a)
+	// Now the DB has policy, so we can provide a normal use case.
+	// Note: you don't need to look at the above code
+	// if you already have a working DB with policy inside.
+
+	return a
+}
+
+func initAdapterWithGormInstanceByMulDb(t *testing.T, dbPool DbPool, dbName string, prefix string, tableName string) *Adapter {
+	//Create an Adapter
+	a, _ := NewAdapterByMulDb(dbPool, dbName, prefix, tableName)
 	// Initialize some policy in DB.
 	initPolicy(t, a)
 	// Now the DB has policy, so we can provide a normal use case.
@@ -336,6 +347,59 @@ func TestAdapterWithCustomTable(t *testing.T) {
 	testSaveLoad(t, a)
 
 	a = initAdapterWithGormInstanceAndCustomTable(t, db)
+	testFilteredPolicy(t, a)
+}
+
+func TestAdapterWithMulDb(t *testing.T) {
+	//create new database
+	NewAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin")
+	NewAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin2")
+
+	testBasicFeatures(t)
+	testIndependenceBetweenMulDb(t)
+}
+
+func testIndependenceBetweenMulDb(t *testing.T) {
+	dsn := "root:@tcp(127.0.0.1:3306)/casbin"
+	dsn2 := "root:@tcp(127.0.0.1:3306)/casbin2"
+
+	dbPool, err := InitDbResolver([]gorm.Dialector{mysql.Open(dsn), mysql.Open(dsn2)}, []string{"casbin", "casbin2"})
+
+	if err != nil {
+		panic(err)
+	}
+
+	//test independence between multi adapter
+	a1 := initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin", "", "casbin_rule")
+	a1.AddPolicy("p", "p", []string{"alice", "book", "read"})
+	a2 := initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin2", "", "casbin_rule2")
+	e, _ := casbin.NewEnforcer("./examples/rbac_model.conf", a2)
+	res, err := e.Enforce("alice", "book", "read")
+	if err != nil || res {
+		t.Error("switch DB fail because data don't change")
+	}
+}
+
+func testBasicFeatures(t *testing.T) {
+	dsn := "root:@tcp(127.0.0.1:3306)/casbin"
+	dsn2 := "root:@tcp(127.0.0.1:3306)/casbin2"
+
+	dbPool, err := InitDbResolver([]gorm.Dialector{mysql.Open(dsn), mysql.Open(dsn2)}, []string{"casbin", "casbin2"})
+
+	if err != nil {
+		panic(err)
+	}
+	//test basic features
+	a := initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin", "", "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+	a = initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin", "", "casbin_rule")
+	testFilteredPolicy(t, a)
+
+	a = initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin2", "", "casbin_rule2")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+	a = initAdapterWithGormInstanceByMulDb(t, dbPool, "casbin2", "", "casbin_rule2")
 	testFilteredPolicy(t, a)
 }
 

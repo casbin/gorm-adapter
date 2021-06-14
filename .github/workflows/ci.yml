@@ -11,7 +11,7 @@ jobs:
   test:
     runs-on: ubuntu-latest
 
-    services: 
+    services:
       mysql:
         image: mysql
         env:
