@@ -31,6 +31,7 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
+	"gorm.io/plugin/dbresolver"
 )
 
 const (
@@ -87,6 +88,24 @@ func finalizer(a *Adapter) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+//Select conn according to table name（use map store name-index）
+type specificPolicy int
+
+func (p *specificPolicy) Resolve(connPools []gorm.ConnPool) gorm.ConnPool {
+	return connPools[*p]
+}
+
+type DbPool struct {
+	dbMap  map[string]specificPolicy
+	policy *specificPolicy
+	source *gorm.DB
+}
+
+func (dbPool *DbPool) switchDb(dbName string) *gorm.DB {
+	*dbPool.policy = dbPool.dbMap[dbName]
+	return dbPool.source.Clauses(dbresolver.Write)
 }
 
 // NewAdapter is the constructor for Adapter.
@@ -180,6 +199,36 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 	}
 
 	return a, nil
+}
+
+// InitDbResolver multiple databases support
+// Example usage:
+// dbPool,err := InitDbResolver([]gorm.Dialector{mysql.Open(dsn),mysql.Open(dsn2)},[]string{"casbin1","casbin2"})
+// a := initAdapterWithGormInstanceByMulDb(t,dbPool,"casbin1","","casbin_rule1")
+// a = initAdapterWithGormInstanceByMulDb(t,dbPool,"casbin2","","casbin_rule2")/*
+func InitDbResolver(dbArr []gorm.Dialector, dbNames []string) (DbPool, error) {
+	if len(dbArr) == 0 {
+		panic("dbArr len is 0")
+	}
+	source, e := gorm.Open(dbArr[0])
+	if e != nil {
+		panic(e.Error())
+	}
+	var p specificPolicy
+	p = 0
+	err := source.Use(dbresolver.Register(dbresolver.Config{Policy: &p, Sources: dbArr}))
+	dbMap := make(map[string]specificPolicy)
+	for i := 0; i < len(dbNames); i++ {
+		dbMap[dbNames[i]] = specificPolicy(i)
+	}
+	return DbPool{dbMap: dbMap, policy: &p, source: source}, err
+}
+
+func NewAdapterByMulDb(dbPool DbPool, dbName string, prefix string, tableName string) (*Adapter, error) {
+	//change DB
+	dbPool.switchDb(dbName)
+
+	return NewAdapterByDBUseTableName(dbPool.source, prefix, tableName)
 }
 
 // NewFilteredAdapter is the constructor for FilteredAdapter.
