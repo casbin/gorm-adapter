@@ -247,7 +247,7 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
 
-func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}) (*Adapter, error) {
+func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...string) (*Adapter, error) {
 	ctx := db.Statement.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -255,7 +255,12 @@ func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}) (*Adapter, error)
 
 	ctx = context.WithValue(ctx, customTableKey{}, t)
 
-	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", defaultTableName)
+	curTableName := defaultTableName
+	if len(tableName) > 0 {
+		curTableName = tableName[0]
+	}
+
+	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", curTableName)
 }
 
 func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
