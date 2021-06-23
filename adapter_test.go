@@ -154,7 +154,7 @@ func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 }
 
 func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapter {
-	type CasbinRule struct {
+	type TestCasbinRule struct {
 		ID    uint   `gorm:"primaryKey;autoIncrement"`
 		Ptype string `gorm:"size:128;uniqueIndex:unique_index"`
 		V0    string `gorm:"size:128;uniqueIndex:unique_index"`
@@ -166,7 +166,7 @@ func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapt
 	}
 
 	// Create an adapter
-	a, _ := NewAdapterByDBWithCustomTable(db, &CasbinRule{})
+	a, _ := NewAdapterByDBWithCustomTable(db, &TestCasbinRule{}, "test_casbin_rule")
 	// Initialize some policy in DB.
 	initPolicy(t, a)
 	// Now the DB has policy, so we can provide a normal use case.
