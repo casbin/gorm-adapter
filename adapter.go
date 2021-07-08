@@ -469,3 +469,29 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 	err := db.Delete(a.getTableInstance(), args...).Error
 	return err
 }
+
+// UpdatePolicy updates a new policy rule to DB.
+func (a *Adapter) UpdatePolicy(sec string, ptype string, oldRule, newPolicy []string) error {
+	oldLine := a.savePolicyLine(ptype, oldRule)
+	newLine := a.savePolicyLine(ptype, newPolicy)
+	return a.db.Model(&oldLine).Where(&oldLine).Updates(newLine).Error
+}
+
+func (a *Adapter) UpdatePolicies(sec string, ptype string, oldRules, newRules [][]string) error {
+	oldPolicies := make([]CasbinRule, 0, len(oldRules))
+	newPolicies := make([]CasbinRule, 0, len(oldRules))
+	for _, oldRule := range oldRules {
+		oldPolicies = append(oldPolicies, a.savePolicyLine(ptype, oldRule))
+	}
+	for _, newRule := range newRules {
+		newPolicies = append(newPolicies, a.savePolicyLine(ptype, newRule))
+	}
+	tx := a.db.Begin()
+	for i := range oldPolicies {
+		if err := tx.Model(&oldPolicies[i]).Where(&oldPolicies[i]).Updates(newPolicies[i]).Error; err != nil {
+			tx.Rollback()
+			return err
+		}
+	}
+	return tx.Commit().Error
+}
