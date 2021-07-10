@@ -15,14 +15,15 @@
 package gormadapter
 
 import (
+	"fmt"
 	"log"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
 	_ "github.com/go-sql-driver/mysql"
-	"github.com/jackc/pgconn"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
 	"gorm.io/driver/mysql"
@@ -332,7 +333,7 @@ func TestAdapterWithCustomTable(t *testing.T) {
 
 	if err = db.Exec("CREATE DATABASE casbin_custom_table").Error; err != nil {
 		// 42P04 is	duplicate_database
-		if err.(*pgconn.PgError).Code != "42P04" {
+		if !strings.Contains(fmt.Sprintf("%s", err), "42P04") {
 			panic(err)
 		}
 	}
