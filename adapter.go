@@ -375,7 +375,7 @@ func (a *Adapter) createTable() error {
 	}
 
 	tableName := a.getFullTableName()
-	index := "idx_" + tableName
+	index := strings.ReplaceAll("idx_"+tableName, ".", "_")
 	hasIndex := a.db.Migrator().HasIndex(t, index)
 	if !hasIndex {
 		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (ptype,v0,v1,v2,v3,v4,v5)", index, tableName)).Error; err != nil {
