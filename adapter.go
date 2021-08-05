@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/casbin/casbin/v2/model"
@@ -396,7 +397,8 @@ func (a *Adapter) dropTable() error {
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
 	var p = []string{line.Ptype,
-		line.V0, line.V1, line.V2, line.V3, line.V4, line.V5}
+		strconv.Quote(line.V0), strconv.Quote(line.V1), strconv.Quote(line.V2),
+		strconv.Quote(line.V3), strconv.Quote(line.V4), strconv.Quote(line.V5)}
 
 	var lineText string
 	if line.V5 != "" {
