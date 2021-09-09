@@ -582,6 +582,16 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	line := a.getTableInstance()
 
 	line.Ptype = ptype
+
+	if fieldIndex == -1 {
+		return a.rawDelete(a.db, *line)
+	}
+
+	err := checkQueryField(fieldValues)
+	if err != nil {
+		return err
+	}
+
 	if fieldIndex <= 0 && 0 < fieldIndex+len(fieldValues) {
 		line.V0 = fieldValues[0-fieldIndex]
 	}
@@ -600,8 +610,18 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
 		line.V5 = fieldValues[5-fieldIndex]
 	}
-	err := a.rawDelete(a.db, *line)
+	err = a.rawDelete(a.db, *line)
 	return err
+}
+
+// checkQueryfield make sure the fields won't all be empty (string --> "")
+func checkQueryField(fieldValues []string) error {
+	for _, fieldValue := range fieldValues {
+		if fieldValue != "" {
+			return nil
+		}
+	}
+	return errors.New("the query field cannot all be empty string (\"\"), please check")
 }
 
 func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
