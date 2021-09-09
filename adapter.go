@@ -19,7 +19,6 @@ import (
 	"errors"
 	"fmt"
 	"runtime"
-	"strconv"
 	"strings"
 
 	"github.com/casbin/casbin/v2/model"
@@ -397,25 +396,17 @@ func (a *Adapter) dropTable() error {
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
 	var p = []string{line.Ptype,
-		strconv.Quote(line.V0), strconv.Quote(line.V1), strconv.Quote(line.V2),
-		strconv.Quote(line.V3), strconv.Quote(line.V4), strconv.Quote(line.V5)}
+		line.V0, line.V1, line.V2,
+		line.V3, line.V4, line.V5}
 
-	var lineText string
-	if line.V5 != "" {
-		lineText = strings.Join(p, ", ")
-	} else if line.V4 != "" {
-		lineText = strings.Join(p[:6], ", ")
-	} else if line.V3 != "" {
-		lineText = strings.Join(p[:5], ", ")
-	} else if line.V2 != "" {
-		lineText = strings.Join(p[:4], ", ")
-	} else if line.V1 != "" {
-		lineText = strings.Join(p[:3], ", ")
-	} else if line.V0 != "" {
-		lineText = strings.Join(p[:2], ", ")
+	index := len(p) - 1
+	for p[index] == "" {
+		index--
 	}
+	index += 1
+	p = p[:index]
 
-	persist.LoadPolicyLine(lineText, model)
+	persist.LoadPolicyArray(p, model)
 }
 
 // LoadPolicy loads policy from database.
