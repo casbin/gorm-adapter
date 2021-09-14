@@ -553,15 +553,12 @@ func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
 
 // AddPolicies adds multiple policy rules to the storage.
 func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error {
-	return a.db.Transaction(func(tx *gorm.DB) error {
-		for _, rule := range rules {
-			line := a.savePolicyLine(ptype, rule)
-			if err := tx.Create(&line).Error; err != nil {
-				return err
-			}
-		}
-		return nil
-	})
+	var lines []CasbinRule
+	for _, rule := range rules {
+		line := a.savePolicyLine(ptype, rule)
+		lines = append(lines, line)
+	}
+	return a.db.Create(&lines).Error
 }
 
 // RemovePolicies removes multiple policy rules from the storage.
