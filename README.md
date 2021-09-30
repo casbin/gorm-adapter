@@ -17,12 +17,13 @@ Gorm Adapter
 
 Gorm Adapter is the [Gorm](https://gorm.io/gorm) adapter for [Casbin](https://github.com/casbin/casbin). With this library, Casbin can load policy from Gorm supported database or save policy to it.
 
-Based on [Officially Supported Databases](http://jinzhu.me/gorm/database.html), The current supported databases are:
+Based on [Officially Supported Databases](https://v1.gorm.io/docs/connecting_to_the_database.html#Supported-Databases), The current supported databases are:
 
 - MySQL
 - PostgreSQL
-- Sqlite3
 - SQL Server
+- Sqlite3
+> Since `` sqlite`` needs ``cgo`` support, it is only supported in branch ``sqlite`` instead of ``master``.See detail: [gorm-adapter#93](https://github.com/casbin/gorm-adapter/issues/93). If you want to use it, maybe you need to merge ``sqlite`` to ``master`` branch manually
 
 You may find other 3rd-party supported DBs in Gorm website or other places.
 
