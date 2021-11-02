@@ -514,24 +514,33 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 		return err
 	}
 
+	var lines []CasbinRule
+	flushEvery := 1000
 	for ptype, ast := range model["p"] {
 		for _, rule := range ast.Policy {
-			line := a.savePolicyLine(ptype, rule)
-			err := a.db.Create(&line).Error
-			if err != nil {
-				return err
+			lines = append(lines, a.savePolicyLine(ptype, rule))
+			if len(lines) > flushEvery {
+				if err := a.db.Create(&lines).Error; err != nil {
+					return err
+				}
+				lines = nil
 			}
 		}
 	}
 
 	for ptype, ast := range model["g"] {
 		for _, rule := range ast.Policy {
-			line := a.savePolicyLine(ptype, rule)
-			err := a.db.Create(&line).Error
-			if err != nil {
-				return err
+			lines = append(lines, a.savePolicyLine(ptype, rule))
+			if len(lines) > flushEvery {
+				if err := a.db.Create(&lines).Error; err != nil {
+					return err
+				}
+				lines = nil
 			}
 		}
+	}
+	if err := a.db.Create(&lines).Error; err != nil {
+		return err
 	}
 
 	return nil
