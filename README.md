@@ -99,6 +99,12 @@ func main() {
 	// Initialize a Gorm adapter and use it in a Casbin enforcer:
 	// The adapter will use an existing gorm.DB instnace.
 	a, _ := gormadapter.NewAdapterByDBWithCustomTable(db, &CasbinRule{}) 
+	// Or use NewAdapterByDBUseTableName
+	/*
+	a, _ := gormadapter.NewAdapterByDBUseTableName(db, "{{your_table_prefix}}", "{{your_table_name}}",
+		gormadapter.WithAutoMigrate(false),
+	)
+	*/
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	
 	// Load the policy from DB.
