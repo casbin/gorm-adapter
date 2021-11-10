@@ -75,6 +75,7 @@ type Adapter struct {
 	dbSpecified    bool
 	db             *gorm.DB
 	isFiltered     bool
+	adapterOptions adapterOptions
 }
 
 // finalizer is the destructor for Adapter.
@@ -181,14 +182,18 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 
 // NewAdapterByDBUseTableName creates gorm-adapter by an existing Gorm instance and the specified table prefix and table name
 // Example: gormadapter.NewAdapterByDBUseTableName(&db, "cms", "casbin") Automatically generate table name like this "cms_casbin"
-func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*Adapter, error) {
+func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string, opts ...Option) (*Adapter, error) {
 	if len(tableName) == 0 {
 		tableName = defaultTableName
 	}
-
+	adapterOptions := defaultAdapterOptions()
+	for _, opt := range opts {
+		opt(&adapterOptions)
+	}
 	a := &Adapter{
-		tablePrefix: prefix,
-		tableName:   tableName,
+		tablePrefix:    prefix,
+		tableName:      tableName,
+		adapterOptions: adapterOptions,
 	}
 
 	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{Context: db.Statement.Context})
@@ -363,6 +368,10 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 }
 
 func (a *Adapter) createTable() error {
+	// disable gorm autoMigrate
+	if !a.adapterOptions.autoMigrate {
+		return nil
+	}
 	t := a.db.Statement.Context.Value(customTableKey{})
 
 	if t != nil {
