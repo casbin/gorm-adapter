@@ -168,7 +168,7 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	}
 
 	// Open the DB, create it if not existed.
-	err := a.open()
+	err := a.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -304,7 +304,7 @@ func (a *Adapter) createDatabase() error {
 	return nil
 }
 
-func (a *Adapter) open() error {
+func (a *Adapter) Open() error {
 	var err error
 	var db *gorm.DB
 
@@ -338,8 +338,8 @@ func (a *Adapter) AddLogger(l logger.Interface) {
 	a.db = a.db.Session(&gorm.Session{Logger: l, Context: a.db.Statement.Context})
 }
 
-func (a *Adapter) close() error {
-	a.db = nil
+func (a *Adapter) Close() error {
+	finalizer(a)
 	return nil
 }
 
