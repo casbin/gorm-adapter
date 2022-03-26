@@ -154,6 +154,13 @@ func initAdapterWithGormInstance(t *testing.T, db *gorm.DB) *Adapter {
 	return a
 }
 
+func initAdapterGormInstanceWithoutMigration(t *testing.T, db *gorm.DB) *Adapter {
+	// Create an adapter
+	db = db.WithContext(NewDisableAutoMigration(db.Statement.Context))
+	a, _ := NewAdapterByDB(db)
+	return a
+}
+
 func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapter {
 	type TestCasbinRule struct {
 		ID    uint   `gorm:"primaryKey;autoIncrement"`
@@ -524,4 +531,41 @@ func TestAddPolicies(t *testing.T) {
 	e.LoadPolicy()
 
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read"}, {"jack2", "data1", "read"}})
+}
+
+func TestDisableAutoMigration(t *testing.T) {
+
+	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Migrator().DropTable(defaultTableName)
+	if err != nil {
+		panic(err)
+	}
+
+	a := initAdapterGormInstanceWithoutMigration(t, db)
+
+	hasTable := a.db.Migrator().HasTable(a.getFullTableName())
+	if hasTable {
+		t.Error("migration has been disabled")
+	}
+
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	err = db.Migrator().DropTable(defaultTableName)
+	if err != nil {
+		panic(err)
+	}
+	
+	a = initAdapterGormInstanceWithoutMigration(t, db)
+
+	hasTable = a.db.Migrator().HasTable(a.getFullTableName())
+	if hasTable {
+		t.Error("migration has been disabled")
+	}
 }
