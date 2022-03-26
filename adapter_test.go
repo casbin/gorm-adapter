@@ -561,7 +561,7 @@ func TestDisableAutoMigration(t *testing.T) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	a = initAdapterGormInstanceWithoutMigration(t, db)
 
 	hasTable = a.db.Migrator().HasTable(a.getFullTableName())

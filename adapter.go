@@ -38,9 +38,9 @@ const (
 	defaultTableName    = "casbin_rule"
 )
 
-type(
-	customTableKey struct{}
-	disableAutoMigrationKey struct {}
+type (
+	customTableKey          struct{}
+	disableAutoMigrationKey struct{}
 )
 
 type CasbinRule struct {
@@ -80,11 +80,11 @@ type Adapter struct {
 	isFiltered     bool
 }
 
-func NewDisableAutoMigration(ctx context.Context,disable ... bool) context.Context  {
-	if len(disable)>0{
-		return context.WithValue(ctx,disableAutoMigrationKey{},disable[0])
-	}else{
-		return context.WithValue(ctx,disableAutoMigrationKey{},true)
+func NewDisableAutoMigration(ctx context.Context, disable ...bool) context.Context {
+	if len(disable) > 0 {
+		return context.WithValue(ctx, disableAutoMigrationKey{}, disable[0])
+	} else {
+		return context.WithValue(ctx, disableAutoMigrationKey{}, true)
 	}
 }
 
@@ -374,8 +374,8 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 }
 
 func (a *Adapter) createTable() error {
-	disableMigration :=a.db.Statement.Context.Value(disableAutoMigrationKey{})
-	if dis,ok:=disableMigration.(bool);ok&&dis{
+	disableMigration := a.db.Statement.Context.Value(disableAutoMigrationKey{})
+	if dis, ok := disableMigration.(bool); ok && dis {
 		return nil
 	}
 	t := a.db.Statement.Context.Value(customTableKey{})
