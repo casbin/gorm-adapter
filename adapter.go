@@ -385,13 +385,8 @@ func (a *Adapter) createTable() error {
 	return nil
 }
 
-func (a *Adapter) dropTable() error {
-	t := a.db.Statement.Context.Value(customTableKey{})
-	if t == nil {
-		return a.db.Migrator().DropTable(a.getTableInstance())
-	}
-
-	return a.db.Migrator().DropTable(t)
+func (a *Adapter) truncateTable() error {
+	return a.db.Exec(fmt.Sprintf("TRUNCATE TABLE  %s;", a.getFullTableName())).Error
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
@@ -505,11 +500,7 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 
 // SavePolicy saves policy to database.
 func (a *Adapter) SavePolicy(model model.Model) error {
-	err := a.dropTable()
-	if err != nil {
-		return err
-	}
-	err = a.createTable()
+	err := a.truncateTable()
 	if err != nil {
 		return err
 	}
