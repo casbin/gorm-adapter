@@ -444,3 +444,7 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 	err := db.Delete(a.getTableInstance(), args...).Error
 	return err
 }
+
+func (a *Adapter) getDb() *gorm.DB {
+	return a.db
+}
