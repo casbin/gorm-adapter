@@ -164,6 +164,8 @@ func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapt
 		V3    string `gorm:"size:128;uniqueIndex:unique_index"`
 		V4    string `gorm:"size:128;uniqueIndex:unique_index"`
 		V5    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V6    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V7    string `gorm:"size:128;uniqueIndex:unique_index"`
 	}
 
 	// Create an adapter
@@ -524,4 +526,13 @@ func TestAddPolicies(t *testing.T) {
 	e.LoadPolicy()
 
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read"}, {"jack2", "data1", "read"}})
+}
+
+func TestAddPoliciesFullColumn(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	e.AddPolicies([][]string{{"jack", "data1", "read", "col3", "col4", "col5", "col6", "col7"}, {"jack2", "data1", "read", "col3", "col4", "col5", "col6", "col7"}})
+	e.LoadPolicy()
+
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read", "col3", "col4", "col5", "col6", "col7"}, {"jack2", "data1", "read", "col3", "col4", "col5", "col6", "col7"}})
 }
