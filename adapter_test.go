@@ -16,7 +16,6 @@ package gormadapter
 
 import (
 	"fmt"
-	"github.com/glebarez/sqlite"
 	"log"
 	"os"
 	"strings"
@@ -24,6 +23,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
+	"github.com/glebarez/sqlite"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
