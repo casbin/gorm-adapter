@@ -23,6 +23,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
+	"github.com/glebarez/sqlite"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -215,24 +216,24 @@ func initAdapterWithGormInstanceByPrefixAndName(t *testing.T, db *gorm.DB, prefi
 	return a
 }
 
-//func TestNilField(t *testing.T) {
-//	a, err := NewAdapter("sqlite3", "test.db")
-//	assert.Nil(t, err)
-//	defer os.Remove("test.db")
-//
-//	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
-//	assert.Nil(t, err)
-//	e.EnableAutoSave(false)
-//
-//	ok, err := e.AddPolicy("", "data1", "write")
-//	assert.Nil(t, err)
-//	e.SavePolicy()
-//	assert.Nil(t, e.LoadPolicy())
-//
-//	ok, err = e.Enforce("", "data1", "write")
-//	assert.Nil(t, err)
-//	assert.Equal(t, ok, true)
-//}
+func TestNilField(t *testing.T) {
+	a, err := NewAdapter("sqlite3", "test.db")
+	assert.Nil(t, err)
+	defer os.Remove("test.db")
+
+	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	assert.Nil(t, err)
+	e.EnableAutoSave(false)
+
+	ok, err := e.AddPolicy("", "data1", "write")
+	assert.Nil(t, err)
+	e.SavePolicy()
+	assert.Nil(t, e.LoadPolicy())
+
+	ok, err = e.Enforce("", "data1", "write")
+	assert.Nil(t, err)
+	assert.Equal(t, ok, true)
+}
 
 func testAutoSave(t *testing.T, a *Adapter) {
 
@@ -415,9 +416,9 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	//a = initAdapter(t, "sqlite3", "casbin.db")
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	a = initAdapter(t, "sqlite3", "casbin.db")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
 	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -441,16 +442,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//a = initAdapterWithGormInstance(t, db)
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstance(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
-	//a = initAdapterWithGormInstance(t, db)
-	//testFilteredPolicy(t, a)
+	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -481,16 +482,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstanceByPrefixAndName(t, db, "casbin", "second")
 	testFilteredPolicy(t, a)
 
-	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
-	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	//testFilteredPolicy(t, a)
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testFilteredPolicy(t, a)
 
 	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testUpdatePolicy(t, a)
@@ -514,9 +515,9 @@ func TestAdapters(t *testing.T) {
 	testUpdatePolicies(t, a)
 	testUpdateFilteredPolicies(t, a)
 
-	//a = initAdapter(t, "sqlite3", "casbin.db")
-	//testUpdatePolicy(t, a)
-	//testUpdatePolicies(t, a)
+	a = initAdapter(t, "sqlite3", "casbin.db")
+	testUpdatePolicy(t, a)
+	testUpdatePolicies(t, a)
 }
 
 func TestAddPolicies(t *testing.T) {
