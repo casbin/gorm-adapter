@@ -39,6 +39,8 @@ const (
 
 type customTableKey struct{}
 
+const disableMigrateKey = "disableMigrateKey"
+
 type CasbinRule struct {
 	ID    uint   `gorm:"primaryKey;autoIncrement"`
 	Ptype string `gorm:"size:100"`
@@ -195,9 +197,13 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 	}
 
 	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{Context: db.Statement.Context})
-	err := a.createTable()
-	if err != nil {
-		return nil, err
+
+	disableMigrate := a.db.Statement.Context.Value(disableMigrateKey)
+	if disableMigrate == nil {
+		err := a.createTable()
+		if err != nil {
+			return nil, err
+		}
 	}
 
 	return a, nil
@@ -247,6 +253,17 @@ func NewFilteredAdapter(driverName string, dataSourceName string, params ...inte
 // NewAdapterByDB creates gorm-adapter by an existing Gorm instance
 func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
+}
+
+func NewAdapterWithoutAutoMigrate(db *gorm.DB) (*Adapter, error) {
+	ctx := db.Statement.Context
+	if ctx == nil {
+		ctx = context.Background()
+	}
+
+	ctx = context.WithValue(ctx, disableMigrateKey, false)
+
+	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", defaultTableName)
 }
 
 func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...string) (*Adapter, error) {

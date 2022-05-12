@@ -192,6 +192,30 @@ func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *
 	return a
 }
 
+func initAdapterWithoutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
+	var err error
+	hasTable := db.Migrator().HasTable(defaultTableName)
+	if hasTable {
+		err = db.Migrator().DropTable(defaultTableName)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	a, err := NewAdapterWithoutAutoMigrate(db)
+
+	hasTable = a.db.Migrator().HasTable(a.getFullTableName())
+	if hasTable {
+		t.Fatal("AutoMigration has been disabled but tables are still created in NewAdapterWithoutAutoMigrate method")
+	}
+	err = a.db.Migrator().CreateTable(&CasbinRule{})
+	if err != nil {
+		panic(err)
+	}
+	initPolicy(t, a)
+	return a
+}
+
 func initAdapterWithGormInstanceByMulDb(t *testing.T, dbPool DbPool, dbName string, prefix string, tableName string) *Adapter {
 	//Create an Adapter
 	a, _ := NewAdapterByMulDb(dbPool, dbName, prefix, tableName)
@@ -351,6 +375,44 @@ func TestAdapterWithCustomTable(t *testing.T) {
 	testSaveLoad(t, a)
 
 	a = initAdapterWithGormInstanceAndCustomTable(t, db)
+	testFilteredPolicy(t, a)
+}
+
+func TestAdapterWithoutAutoMigrate(t *testing.T) {
+	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a := initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	if err = db.Exec("CREATE DATABASE casbin_custom_table").Error; err != nil {
+		// 42P04 is	duplicate_database
+		if !strings.Contains(fmt.Sprintf("%s", err), "42P04") {
+			panic(err)
+		}
+	}
+
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
 	testFilteredPolicy(t, a)
 }
 
