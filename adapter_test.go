@@ -192,7 +192,7 @@ func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *
 	return a
 }
 
-func initAdapterWithOutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
+func initAdapterWithoutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
 	var err error
 	hasTable := db.Migrator().HasTable(defaultTableName)
 	if hasTable {
@@ -378,17 +378,17 @@ func TestAdapterWithCustomTable(t *testing.T) {
 	testFilteredPolicy(t, a)
 }
 
-func TestAdapterWithOutAutoMigrate(t *testing.T) {
+func TestAdapterWithoutAutoMigrate(t *testing.T) {
 	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
 
-	a := initAdapterWithOutAutoMigrate(t, db)
+	a := initAdapterWithoutAutoMigrate(t, db)
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	a = initAdapterWithOutAutoMigrate(t, db)
+	a = initAdapterWithoutAutoMigrate(t, db)
 	testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
@@ -408,11 +408,11 @@ func TestAdapterWithOutAutoMigrate(t *testing.T) {
 		panic(err)
 	}
 
-	a = initAdapterWithOutAutoMigrate(t, db)
+	a = initAdapterWithoutAutoMigrate(t, db)
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	a = initAdapterWithOutAutoMigrate(t, db)
+	a = initAdapterWithoutAutoMigrate(t, db)
 	testFilteredPolicy(t, a)
 }
 
