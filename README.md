@@ -70,7 +70,15 @@ func main() {
 }
 ```
 ## Turn off AutoMigrate
-New an adapter will use ``AutoMigrate`` by default for create table, if you want to turn it off, please use API ``NewAdapterWithoutAutoMigrate(db *gorm.DB) (*Adapter, error)``. Find out more at [gorm-adapter#160](https://github.com/casbin/gorm-adapter/pull/160)
+New an adapter will use ``AutoMigrate`` by default for create table, if you want to turn it off, please use API ``TurnOffAutoMigrate(db *gorm.DB) *gorm.DB``. See example: 
+```go
+db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+db = TurnOffAutoMigrate(db)
+// a,_ := NewAdapterByDB(...)
+// a,_ := NewAdapterByDBUseTableName(...)
+a,_ := NewAdapterByDBWithCustomTable(...)
+```
+Find out more details at [gorm-adapter#162](https://github.com/casbin/gorm-adapter/issues/162)
 ## Customize table columns example
 You can change the gorm struct tags, but the table structure must stay the same.
 ```go

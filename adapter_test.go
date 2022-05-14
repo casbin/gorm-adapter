@@ -194,21 +194,36 @@ func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *
 
 func initAdapterWithoutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
 	var err error
-	hasTable := db.Migrator().HasTable(defaultTableName)
+	var customTableName = "without_auto_migrate_custom_table"
+	hasTable := db.Migrator().HasTable(customTableName)
 	if hasTable {
-		err = db.Migrator().DropTable(defaultTableName)
+		err = db.Migrator().DropTable(customTableName)
 		if err != nil {
 			panic(err)
 		}
 	}
 
-	a, err := NewAdapterWithoutAutoMigrate(db)
+	db = TurnOffAutoMigrate(db)
+
+	type CustomCasbinRule struct {
+		ID    uint   `gorm:"primaryKey;autoIncrement"`
+		Ptype string `gorm:"size:50"`
+		V0    string `gorm:"size:50"`
+		V1    string `gorm:"size:50"`
+		V2    string `gorm:"size:50"`
+		V3    string `gorm:"size:50"`
+		V4    string `gorm:"size:50"`
+		V5    string `gorm:"size:50"`
+		V6    string `gorm:"size:50"`
+		V7    string `gorm:"size:50"`
+	}
+	a, err := NewAdapterByDBWithCustomTable(db, &CustomCasbinRule{}, customTableName)
 
 	hasTable = a.db.Migrator().HasTable(a.getFullTableName())
 	if hasTable {
 		t.Fatal("AutoMigration has been disabled but tables are still created in NewAdapterWithoutAutoMigrate method")
 	}
-	err = a.db.Migrator().CreateTable(&CasbinRule{})
+	err = a.db.Migrator().CreateTable(&CustomCasbinRule{})
 	if err != nil {
 		panic(err)
 	}
@@ -391,7 +406,7 @@ func TestAdapterWithoutAutoMigrate(t *testing.T) {
 	a = initAdapterWithoutAutoMigrate(t, db)
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"), &gorm.Config{})
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=localhost port=5432 sslmode=disable TimeZone=Asia/Shanghai"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -404,6 +419,18 @@ func TestAdapterWithoutAutoMigrate(t *testing.T) {
 	}
 
 	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
