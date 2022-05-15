@@ -198,12 +198,9 @@ func NewAdapterByDBUseTableName(db *gorm.DB, prefix string, tableName string) (*
 
 	a.db = db.Scopes(a.casbinRuleTable()).Session(&gorm.Session{Context: db.Statement.Context})
 
-	disableMigrate := a.db.Statement.Context.Value(disableMigrateKey)
-	if disableMigrate == nil {
-		err := a.createTable()
-		if err != nil {
-			return nil, err
-		}
+	err := a.createTable()
+	if err != nil {
+		return nil, err
 	}
 
 	return a, nil
@@ -255,7 +252,7 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
 
-func NewAdapterWithoutAutoMigrate(db *gorm.DB) (*Adapter, error) {
+func TurnOffAutoMigrate(db *gorm.DB) *gorm.DB {
 	ctx := db.Statement.Context
 	if ctx == nil {
 		ctx = context.Background()
@@ -263,7 +260,7 @@ func NewAdapterWithoutAutoMigrate(db *gorm.DB) (*Adapter, error) {
 
 	ctx = context.WithValue(ctx, disableMigrateKey, false)
 
-	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", defaultTableName)
+	return db.WithContext(ctx)
 }
 
 func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...string) (*Adapter, error) {
@@ -383,6 +380,11 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 }
 
 func (a *Adapter) createTable() error {
+	disableMigrate := a.db.Statement.Context.Value(disableMigrateKey)
+	if disableMigrate != nil {
+		return nil
+	}
+
 	t := a.db.Statement.Context.Value(customTableKey{})
 
 	if t != nil {
@@ -412,6 +414,13 @@ func (a *Adapter) dropTable() error {
 	}
 
 	return a.db.Migrator().DropTable(t)
+}
+
+func (a *Adapter) truncateTable() error {
+	if a.db.Config.Name() == sqlite.DriverName {
+		return a.db.Exec(fmt.Sprintf("delete from %s", a.getFullTableName())).Error
+	}
+	return a.db.Exec(fmt.Sprintf("truncate table %s", a.getFullTableName())).Error
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
@@ -538,11 +547,7 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 
 // SavePolicy saves policy to database.
 func (a *Adapter) SavePolicy(model model.Model) error {
-	err := a.dropTable()
-	if err != nil {
-		return err
-	}
-	err = a.createTable()
+	err := a.truncateTable()
 	if err != nil {
 		return err
 	}
