@@ -424,6 +424,9 @@ func (a *Adapter) truncateTable() error {
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) {
+	if line.Ptype == "" {
+		return
+	}
 	var p = []string{line.Ptype,
 		line.V0, line.V1, line.V2,
 		line.V3, line.V4, line.V5,
