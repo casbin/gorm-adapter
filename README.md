@@ -17,14 +17,15 @@ Gorm Adapter
 
 Gorm Adapter is the [Gorm](https://gorm.io/gorm) adapter for [Casbin](https://github.com/casbin/casbin). With this library, Casbin can load policy from Gorm supported database or save policy to it.
 
-Based on [Officially Supported Databases](http://jinzhu.me/gorm/database.html), The current supported databases are:
+Based on [Officially Supported Databases](https://v1.gorm.io/docs/connecting_to_the_database.html#Supported-Databases), The current supported databases are:
 
 - MySQL
 - PostgreSQL
-- Sqlite3
 - SQL Server
+- Sqlite3
+> gorm-adapter use ``github.com/glebarez/sqlite`` instead of gorm official sqlite driver ``gorm.io/driver/sqlite`` because the latter needs ``cgo`` support. But there is almost no difference between the two driver. If there is a difference in use, please submit an issue.
 
-You may find other 3rd-party supported DBs in Gorm website or other places.
+- other 3rd-party supported DBs in Gorm website or other places.
 
 ## Installation
 
@@ -68,7 +69,16 @@ func main() {
 	e.SavePolicy()
 }
 ```
-
+## Turn off AutoMigrate
+New an adapter will use ``AutoMigrate`` by default for create table, if you want to turn it off, please use API ``TurnOffAutoMigrate(db *gorm.DB) *gorm.DB``. See example: 
+```go
+db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+db = TurnOffAutoMigrate(db)
+// a,_ := NewAdapterByDB(...)
+// a,_ := NewAdapterByDBUseTableName(...)
+a,_ := NewAdapterByDBWithCustomTable(...)
+```
+Find out more details at [gorm-adapter#162](https://github.com/casbin/gorm-adapter/issues/162)
 ## Customize table columns example
 You can change the gorm struct tags, but the table structure must stay the same.
 ```go

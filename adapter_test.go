@@ -23,6 +23,7 @@ import (
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
+	"github.com/glebarez/sqlite"
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
@@ -164,6 +165,8 @@ func initAdapterWithGormInstanceAndCustomTable(t *testing.T, db *gorm.DB) *Adapt
 		V3    string `gorm:"size:128;uniqueIndex:unique_index"`
 		V4    string `gorm:"size:128;uniqueIndex:unique_index"`
 		V5    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V6    string `gorm:"size:128;uniqueIndex:unique_index"`
+		V7    string `gorm:"size:128;uniqueIndex:unique_index"`
 	}
 
 	// Create an adapter
@@ -186,6 +189,45 @@ func initAdapterWithGormInstanceByName(t *testing.T, db *gorm.DB, name string) *
 	// Note: you don't need to look at the above code
 	// if you already have a working DB with policy inside.
 
+	return a
+}
+
+func initAdapterWithoutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
+	var err error
+	var customTableName = "without_auto_migrate_custom_table"
+	hasTable := db.Migrator().HasTable(customTableName)
+	if hasTable {
+		err = db.Migrator().DropTable(customTableName)
+		if err != nil {
+			panic(err)
+		}
+	}
+
+	db = TurnOffAutoMigrate(db)
+
+	type CustomCasbinRule struct {
+		ID    uint   `gorm:"primaryKey;autoIncrement"`
+		Ptype string `gorm:"size:50"`
+		V0    string `gorm:"size:50"`
+		V1    string `gorm:"size:50"`
+		V2    string `gorm:"size:50"`
+		V3    string `gorm:"size:50"`
+		V4    string `gorm:"size:50"`
+		V5    string `gorm:"size:50"`
+		V6    string `gorm:"size:50"`
+		V7    string `gorm:"size:50"`
+	}
+	a, err := NewAdapterByDBWithCustomTable(db, &CustomCasbinRule{}, customTableName)
+
+	hasTable = a.db.Migrator().HasTable(a.getFullTableName())
+	if hasTable {
+		t.Fatal("AutoMigration has been disabled but tables are still created in NewAdapterWithoutAutoMigrate method")
+	}
+	err = a.db.Migrator().CreateTable(&CustomCasbinRule{})
+	if err != nil {
+		panic(err)
+	}
+	initPolicy(t, a)
 	return a
 }
 
@@ -213,24 +255,24 @@ func initAdapterWithGormInstanceByPrefixAndName(t *testing.T, db *gorm.DB, prefi
 	return a
 }
 
-//func TestNilField(t *testing.T) {
-//	a, err := NewAdapter("sqlite3", "test.db")
-//	assert.Nil(t, err)
-//	defer os.Remove("test.db")
-//
-//	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
-//	assert.Nil(t, err)
-//	e.EnableAutoSave(false)
-//
-//	ok, err := e.AddPolicy("", "data1", "write")
-//	assert.Nil(t, err)
-//	e.SavePolicy()
-//	assert.Nil(t, e.LoadPolicy())
-//
-//	ok, err = e.Enforce("", "data1", "write")
-//	assert.Nil(t, err)
-//	assert.Equal(t, ok, true)
-//}
+func TestNilField(t *testing.T) {
+	a, err := NewAdapter("sqlite3", "test.db")
+	assert.Nil(t, err)
+	defer os.Remove("test.db")
+
+	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	assert.Nil(t, err)
+	e.EnableAutoSave(false)
+
+	ok, err := e.AddPolicy("", "data1", "write")
+	assert.Nil(t, err)
+	e.SavePolicy()
+	assert.Nil(t, e.LoadPolicy())
+
+	ok, err = e.Enforce("", "data1", "write")
+	assert.Nil(t, err)
+	assert.Equal(t, ok, true)
+}
 
 func testAutoSave(t *testing.T, a *Adapter) {
 
@@ -351,6 +393,56 @@ func TestAdapterWithCustomTable(t *testing.T) {
 	testFilteredPolicy(t, a)
 }
 
+func TestAdapterWithoutAutoMigrate(t *testing.T) {
+	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a := initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=localhost port=5432 sslmode=disable TimeZone=Asia/Shanghai"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	if err = db.Exec("CREATE DATABASE casbin_custom_table").Error; err != nil {
+		// 42P04 is	duplicate_database
+		if !strings.Contains(fmt.Sprintf("%s", err), "42P04") {
+			panic(err)
+		}
+	}
+
+	db, err = gorm.Open(postgres.Open("user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable dbname=casbin_custom_table"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testFilteredPolicy(t, a)
+
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
+
+	a = initAdapterWithoutAutoMigrate(t, db)
+	testFilteredPolicy(t, a)
+}
+
 func TestAdapterWithMulDb(t *testing.T) {
 	//create new database
 	NewAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin")
@@ -413,9 +505,9 @@ func TestAdapters(t *testing.T) {
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
-	//a = initAdapter(t, "sqlite3", "casbin.db")
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	a = initAdapter(t, "sqlite3", "casbin.db")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
 	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -439,16 +531,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//a = initAdapterWithGormInstance(t, db)
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstance(t, db)
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
-	//a = initAdapterWithGormInstance(t, db)
-	//testFilteredPolicy(t, a)
+	a = initAdapterWithGormInstance(t, db)
+	testFilteredPolicy(t, a)
 
 	db, err = gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
@@ -479,16 +571,16 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstanceByPrefixAndName(t, db, "casbin", "second")
 	testFilteredPolicy(t, a)
 
-	//db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
-	//if err != nil {
-	//	panic(err)
-	//}
-	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	//testAutoSave(t, a)
-	//testSaveLoad(t, a)
+	db, err = gorm.Open(sqlite.Open("casbin.db"), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testAutoSave(t, a)
+	testSaveLoad(t, a)
 
-	//a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
-	//testFilteredPolicy(t, a)
+	a = initAdapterWithGormInstanceByName(t, db, "casbin_rule")
+	testFilteredPolicy(t, a)
 
 	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testUpdatePolicy(t, a)
@@ -512,7 +604,25 @@ func TestAdapters(t *testing.T) {
 	testUpdatePolicies(t, a)
 	testUpdateFilteredPolicies(t, a)
 
-	//a = initAdapter(t, "sqlite3", "casbin.db")
-	//testUpdatePolicy(t, a)
-	//testUpdatePolicies(t, a)
+	a = initAdapter(t, "sqlite3", "casbin.db")
+	testUpdatePolicy(t, a)
+	testUpdatePolicies(t, a)
+}
+
+func TestAddPolicies(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	e.AddPolicies([][]string{{"jack", "data1", "read"}, {"jack2", "data1", "read"}})
+	e.LoadPolicy()
+
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read"}, {"jack2", "data1", "read"}})
+}
+
+func TestAddPoliciesFullColumn(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	e.AddPolicies([][]string{{"jack", "data1", "read", "col3", "col4", "col5", "col6", "col7"}, {"jack2", "data1", "read", "col3", "col4", "col5", "col6", "col7"}})
+	e.LoadPolicy()
+
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read", "col3", "col4", "col5", "col6", "col7"}, {"jack2", "data1", "read", "col3", "col4", "col5", "col6", "col7"}})
 }
