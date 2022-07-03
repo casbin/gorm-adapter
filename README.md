@@ -73,7 +73,7 @@ func main() {
 New an adapter will use ``AutoMigrate`` by default for create table, if you want to turn it off, please use API ``TurnOffAutoMigrate(db *gorm.DB) *gorm.DB``. See example: 
 ```go
 db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
-db = TurnOffAutoMigrate(db)
+TurnOffAutoMigrate(db)
 // a,_ := NewAdapterByDB(...)
 // a,_ := NewAdapterByDBUseTableName(...)
 a,_ := NewAdapterByDBWithCustomTable(...)
