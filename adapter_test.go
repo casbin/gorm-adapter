@@ -203,7 +203,7 @@ func initAdapterWithoutAutoMigrate(t *testing.T, db *gorm.DB) *Adapter {
 		}
 	}
 
-	db = TurnOffAutoMigrate(db)
+	TurnOffAutoMigrate(db)
 
 	type CustomCasbinRule struct {
 		ID    uint   `gorm:"primaryKey;autoIncrement"`

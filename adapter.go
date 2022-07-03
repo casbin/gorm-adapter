@@ -15,7 +15,6 @@
 package gormadapter
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"runtime"
@@ -37,9 +36,8 @@ const (
 	defaultTableName    = "casbin_rule"
 )
 
-type customTableKey struct{}
-
 const disableMigrateKey = "disableMigrateKey"
+const customTableKey = "customTableKey"
 
 type CasbinRule struct {
 	ID    uint   `gorm:"primaryKey;autoIncrement"`
@@ -252,31 +250,19 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
 
-func TurnOffAutoMigrate(db *gorm.DB) *gorm.DB {
-	ctx := db.Statement.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	ctx = context.WithValue(ctx, disableMigrateKey, false)
-
-	return db.WithContext(ctx)
+func TurnOffAutoMigrate(db *gorm.DB) {
+	*db = *db.Set(disableMigrateKey, false)
 }
 
 func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...string) (*Adapter, error) {
-	ctx := db.Statement.Context
-	if ctx == nil {
-		ctx = context.Background()
-	}
-
-	ctx = context.WithValue(ctx, customTableKey{}, t)
+	*db = *db.Set(customTableKey, t)
 
 	curTableName := defaultTableName
 	if len(tableName) > 0 {
 		curTableName = tableName[0]
 	}
 
-	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", curTableName)
+	return NewAdapterByDBUseTableName(db, "", curTableName)
 }
 
 func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
@@ -380,14 +366,14 @@ func (a *Adapter) casbinRuleTable() func(db *gorm.DB) *gorm.DB {
 }
 
 func (a *Adapter) createTable() error {
-	disableMigrate := a.db.Statement.Context.Value(disableMigrateKey)
-	if disableMigrate != nil {
+	disableMigrate, ok := a.db.Get(disableMigrateKey)
+	if ok && disableMigrate != nil {
 		return nil
 	}
 
-	t := a.db.Statement.Context.Value(customTableKey{})
+	t, ok := a.db.Get(customTableKey)
 
-	if t != nil {
+	if ok && t != nil {
 		return a.db.AutoMigrate(t)
 	}
 
@@ -408,8 +394,9 @@ func (a *Adapter) createTable() error {
 }
 
 func (a *Adapter) dropTable() error {
-	t := a.db.Statement.Context.Value(customTableKey{})
-	if t == nil {
+	t, ok := a.db.Get(customTableKey)
+
+	if !ok || t == nil {
 		return a.db.Migrator().DropTable(a.getTableInstance())
 	}
 
