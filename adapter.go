@@ -16,6 +16,7 @@ package gormadapter
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 	"fmt"
 	"github.com/casbin/casbin/v2"
@@ -611,8 +612,8 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 }
 
 // Transaction perform a set of operations within a transaction
-func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error) {
-	tx := a.db.Begin()
+func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error, opts ...*sql.TxOptions) {
+	tx := a.db.Begin(opts...)
 	b := &Adapter{db: tx}
 	// copy enforcer to set the new adapter with transaction tx
 	copyE := *e
