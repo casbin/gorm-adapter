@@ -612,7 +612,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 }
 
 // Transaction perform a set of operations within a transaction
-func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error, opts ...*sql.TxOptions) {
+func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error, opts ...*sql.TxOptions) error {
 	tx := a.db.Begin(opts...)
 	b := &Adapter{db: tx}
 	// copy enforcer to set the new adapter with transaction tx
@@ -621,16 +621,11 @@ func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) erro
 	copyEnforcer.SetAdapter(b)
 	err := fc(copyEnforcer)
 	if err != nil {
-		err = tx.Rollback().Error
-		if err != nil {
-			panic(err)
-		}
-		return
+		tx.Rollback()
+		return err
 	}
 	err = tx.Commit().Error
-	if err != nil {
-		panic(err)
-	}
+	return err
 }
 
 // RemovePolicies removes multiple policy rules from the storage.
