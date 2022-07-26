@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"github.com/casbin/casbin/v2"
 	"runtime"
 	"strings"
 
@@ -607,6 +608,28 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 		lines = append(lines, line)
 	}
 	return a.db.Create(&lines).Error
+}
+
+// Transaction perform a set of operations within a transaction
+func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error) {
+	tx := a.db.Begin()
+	b := &Adapter{db: tx}
+	// copy enforcer to set the new adapter with transaction tx
+	copyE := *e
+	copyEnforcer := &copyE
+	copyEnforcer.SetAdapter(b)
+	err := fc(copyEnforcer)
+	if err != nil {
+		err = tx.Rollback().Error
+		if err != nil {
+			panic(err)
+		}
+		return
+	}
+	err = tx.Commit().Error
+	if err != nil {
+		panic(err)
+	}
 }
 
 // RemovePolicies removes multiple policy rules from the storage.

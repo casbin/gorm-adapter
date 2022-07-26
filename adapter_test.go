@@ -626,3 +626,20 @@ func TestAddPoliciesFullColumn(t *testing.T) {
 
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read", "col3", "col4", "col5", "col6", "col7"}, {"jack2", "data1", "read", "col3", "col4", "col5", "col6", "col7"}})
 }
+
+func TestTransaction(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	e.GetAdapter().(*Adapter).Transaction(e, func(e *casbin.Enforcer) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		_, err = e.AddPolicy("jack", "data2", "write")
+		//err = errors.New("some error")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+}
