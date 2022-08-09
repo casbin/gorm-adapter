@@ -630,7 +630,7 @@ func TestAddPoliciesFullColumn(t *testing.T) {
 func TestTransaction(t *testing.T) {
 	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
-	e.GetAdapter().(*Adapter).Transaction(e, func(e *casbin.Enforcer) error {
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
 		_, err := e.AddPolicy("jack", "data1", "write")
 		if err != nil {
 			return err
@@ -642,4 +642,7 @@ func TestTransaction(t *testing.T) {
 		}
 		return nil
 	})
+	if err != nil {
+		return
+	}
 }

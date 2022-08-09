@@ -612,14 +612,24 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 }
 
 // Transaction perform a set of operations within a transaction
-func (a *Adapter) Transaction(e *casbin.Enforcer, fc func(*casbin.Enforcer) error, opts ...*sql.TxOptions) error {
-	tx := a.db.Begin(opts...)
+func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
+	var err error
+	oriAdapter := a.db
+	// reload policy from database to sync with the transaction
+	defer func() {
+		e.SetAdapter(&Adapter{db: oriAdapter})
+		err = e.LoadPolicy()
+		if err != nil {
+			panic(err)
+		}
+	}()
+	copyDB := *a.db
+	tx := copyDB.Begin(opts...)
 	b := &Adapter{db: tx}
 	// copy enforcer to set the new adapter with transaction tx
-	copyE := *e
-	copyEnforcer := &copyE
+	copyEnforcer := e
 	copyEnforcer.SetAdapter(b)
-	err := fc(copyEnforcer)
+	err = fc(copyEnforcer)
 	if err != nil {
 		tx.Rollback()
 		return err
