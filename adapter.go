@@ -69,6 +69,10 @@ type Filter struct {
 	V7    []string
 }
 
+type BatchFilter struct {
+	filters []Filter
+}
+
 // Adapter represents the Gorm adapter for policy storage.
 type Adapter struct {
 	driverName     string
@@ -456,17 +460,32 @@ func (a *Adapter) LoadPolicy(model model.Model) error {
 func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
 	var lines []CasbinRule
 
-	filterValue, ok := filter.(Filter)
-	if !ok {
-		return errors.New("invalid filter type")
+	batchFilter := BatchFilter{
+		filters: []Filter{},
+	}
+	switch filterValue := filter.(type) {
+	case Filter:
+		batchFilter.filters = []Filter{filterValue}
+	case *Filter:
+		batchFilter.filters = []Filter{*filterValue}
+	case []Filter:
+		batchFilter.filters = filterValue
+	case BatchFilter:
+		batchFilter = filterValue
+	case *BatchFilter:
+		batchFilter = *filterValue
+	default:
+		return errors.New("unsupported filter type")
 	}
 
-	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Order("ID").Find(&lines).Error; err != nil {
-		return err
-	}
+	for _, f := range batchFilter.filters {
+		if err := a.db.Scopes(a.filterQuery(a.db, f)).Order("ID").Find(&lines).Error; err != nil {
+			return err
+		}
 
-	for _, line := range lines {
-		loadPolicyLine(line, model)
+		for _, line := range lines {
+			loadPolicyLine(line, model)
+		}
 	}
 	a.isFiltered = true
 

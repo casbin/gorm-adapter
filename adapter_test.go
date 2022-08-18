@@ -334,6 +334,19 @@ func testFilteredPolicy(t *testing.T, a *Adapter) {
 	// Load policies for alice and bob
 	assert.Nil(t, e.LoadFilteredPolicy(Filter{V0: []string{"alice", "bob"}}))
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}})
+
+	assert.Nil(t, e.LoadFilteredPolicy(BatchFilter{
+		filters: []Filter{
+			{V0: []string{"alice"}},
+			{V1: []string{"data2"}},
+		},
+	}))
+	testGetPolicy(t, e, [][]string{
+		{"alice", "data1", "read"},
+		{"bob", "data2", "write"},
+		{"data2_admin", "data2", "read"},
+		{"data2_admin", "data2", "write"},
+	})
 }
 
 func testUpdatePolicy(t *testing.T, a *Adapter) {
