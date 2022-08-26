@@ -19,10 +19,10 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
-	"github.com/casbin/casbin/v2"
 	"runtime"
 	"strings"
 
+	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/glebarez/sqlite"
