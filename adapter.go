@@ -51,8 +51,6 @@ type CasbinRule struct {
 	V3    string `gorm:"size:100"`
 	V4    string `gorm:"size:100"`
 	V5    string `gorm:"size:100"`
-	V6    string `gorm:"size:25"`
-	V7    string `gorm:"size:25"`
 }
 
 func (CasbinRule) TableName() string {
@@ -67,8 +65,10 @@ type Filter struct {
 	V3    []string
 	V4    []string
 	V5    []string
-	V6    []string
-	V7    []string
+}
+
+type BatchFilter struct {
+	filters []Filter
 }
 
 // Adapter represents the Gorm adapter for policy storage.
@@ -401,7 +401,7 @@ func (a *Adapter) createTable() error {
 	index := strings.ReplaceAll("idx_"+tableName, ".", "_")
 	hasIndex := a.db.Migrator().HasIndex(t, index)
 	if !hasIndex {
-		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (ptype,v0,v1,v2,v3,v4,v5,v6,v7)", index, tableName)).Error; err != nil {
+		if err := a.db.Exec(fmt.Sprintf("CREATE UNIQUE INDEX %s ON %s (ptype,v0,v1,v2,v3,v4,v5)", index, tableName)).Error; err != nil {
 			return err
 		}
 	}
@@ -427,8 +427,7 @@ func (a *Adapter) truncateTable() error {
 func loadPolicyLine(line CasbinRule, model model.Model) {
 	var p = []string{line.Ptype,
 		line.V0, line.V1, line.V2,
-		line.V3, line.V4, line.V5,
-		line.V6, line.V7}
+		line.V3, line.V4, line.V5}
 
 	index := len(p) - 1
 	for p[index] == "" {
@@ -458,17 +457,32 @@ func (a *Adapter) LoadPolicy(model model.Model) error {
 func (a *Adapter) LoadFilteredPolicy(model model.Model, filter interface{}) error {
 	var lines []CasbinRule
 
-	filterValue, ok := filter.(Filter)
-	if !ok {
-		return errors.New("invalid filter type")
+	batchFilter := BatchFilter{
+		filters: []Filter{},
+	}
+	switch filterValue := filter.(type) {
+	case Filter:
+		batchFilter.filters = []Filter{filterValue}
+	case *Filter:
+		batchFilter.filters = []Filter{*filterValue}
+	case []Filter:
+		batchFilter.filters = filterValue
+	case BatchFilter:
+		batchFilter = filterValue
+	case *BatchFilter:
+		batchFilter = *filterValue
+	default:
+		return errors.New("unsupported filter type")
 	}
 
-	if err := a.db.Scopes(a.filterQuery(a.db, filterValue)).Order("ID").Find(&lines).Error; err != nil {
-		return err
-	}
+	for _, f := range batchFilter.filters {
+		if err := a.db.Scopes(a.filterQuery(a.db, f)).Order("ID").Find(&lines).Error; err != nil {
+			return err
+		}
 
-	for _, line := range lines {
-		loadPolicyLine(line, model)
+		for _, line := range lines {
+			loadPolicyLine(line, model)
+		}
 	}
 	a.isFiltered = true
 
@@ -504,12 +518,6 @@ func (a *Adapter) filterQuery(db *gorm.DB, filter Filter) func(db *gorm.DB) *gor
 		if len(filter.V5) > 0 {
 			db = db.Where("v5 in (?)", filter.V5)
 		}
-		if len(filter.V6) > 0 {
-			db = db.Where("v6 in (?)", filter.V6)
-		}
-		if len(filter.V7) > 0 {
-			db = db.Where("v7 in (?)", filter.V7)
-		}
 		return db
 	}
 }
@@ -535,12 +543,6 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 	}
 	if len(rule) > 5 {
 		line.V5 = rule[5]
-	}
-	if len(rule) > 6 {
-		line.V6 = rule[6]
-	}
-	if len(rule) > 7 {
-		line.V7 = rule[7]
 	}
 
 	return *line
@@ -684,12 +686,6 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
 		line.V5 = fieldValues[5-fieldIndex]
 	}
-	if fieldIndex <= 6 && 6 < fieldIndex+len(fieldValues) {
-		line.V6 = fieldValues[6-fieldIndex]
-	}
-	if fieldIndex <= 7 && 7 < fieldIndex+len(fieldValues) {
-		line.V7 = fieldValues[7-fieldIndex]
-	}
 	err = a.rawDelete(a.db, *line)
 	return err
 }
@@ -732,14 +728,6 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 		queryStr += " and v5 = ?"
 		queryArgs = append(queryArgs, line.V5)
 	}
-	if line.V6 != "" {
-		queryStr += " and v6 = ?"
-		queryArgs = append(queryArgs, line.V6)
-	}
-	if line.V7 != "" {
-		queryStr += " and v7 = ?"
-		queryArgs = append(queryArgs, line.V7)
-	}
 	args := append([]interface{}{queryStr}, queryArgs...)
 	err := db.Delete(a.getTableInstance(), args...).Error
 	return err
@@ -772,14 +760,6 @@ func appendWhere(line CasbinRule) (string, []interface{}) {
 	if line.V5 != "" {
 		queryStr += " and v5 = ?"
 		queryArgs = append(queryArgs, line.V5)
-	}
-	if line.V6 != "" {
-		queryStr += " and v6 = ?"
-		queryArgs = append(queryArgs, line.V6)
-	}
-	if line.V7 != "" {
-		queryStr += " and v7 = ?"
-		queryArgs = append(queryArgs, line.V7)
 	}
 	return queryStr, queryArgs
 }
@@ -832,12 +812,6 @@ func (a *Adapter) UpdateFilteredPolicies(sec string, ptype string, newPolicies [
 	}
 	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
 		line.V5 = fieldValues[5-fieldIndex]
-	}
-	if fieldIndex <= 6 && 6 < fieldIndex+len(fieldValues) {
-		line.V6 = fieldValues[6-fieldIndex]
-	}
-	if fieldIndex <= 7 && 7 < fieldIndex+len(fieldValues) {
-		line.V7 = fieldValues[7-fieldIndex]
 	}
 
 	newP := make([]CasbinRule, 0, len(newPolicies))
@@ -901,14 +875,6 @@ func (c *CasbinRule) queryString() (interface{}, []interface{}) {
 		queryStr += " and v5 = ?"
 		queryArgs = append(queryArgs, c.V5)
 	}
-	if c.V6 != "" {
-		queryStr += " and v6 = ?"
-		queryArgs = append(queryArgs, c.V6)
-	}
-	if c.V7 != "" {
-		queryStr += " and v7 = ?"
-		queryArgs = append(queryArgs, c.V7)
-	}
 
 	return queryStr, queryArgs
 }
@@ -935,12 +901,6 @@ func (c *CasbinRule) toStringPolicy() []string {
 	}
 	if c.V5 != "" {
 		policy = append(policy, c.V5)
-	}
-	if c.V6 != "" {
-		policy = append(policy, c.V6)
-	}
-	if c.V7 != "" {
-		policy = append(policy, c.V7)
 	}
 	return policy
 }
