@@ -628,3 +628,23 @@ func TestAddPolicies(t *testing.T) {
 
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read"}, {"jack2", "data1", "read"}})
 }
+
+func TestTransaction(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		_, err = e.AddPolicy("jack", "data2", "write")
+		//err = errors.New("some error")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+}
