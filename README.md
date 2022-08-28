@@ -124,7 +124,31 @@ func main() {
 	e.SavePolicy()
 }
 ```
+## Transaction
+You can modify policies within a transaction.See example:
+```go
+package main
 
+func main() {
+	a, err := NewAdapterByDB(db)
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	err = e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		_, err = e.AddPolicy("jack", "data2", "write")
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		// handle if transaction failed
+		return
+	}
+}
+```
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)
