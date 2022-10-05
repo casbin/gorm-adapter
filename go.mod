@@ -3,7 +3,7 @@ module github.com/casbin/gorm-adapter/v3
 go 1.14
 
 require (
-	github.com/casbin/casbin/v2 v2.37.4
+	github.com/casbin/casbin/v2 v2.55.1
 	github.com/glebarez/sqlite v1.4.3
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/golang-sql/civil v0.0.0-20220223132316-b832511892a9 // indirect
