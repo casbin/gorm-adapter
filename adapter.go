@@ -835,17 +835,16 @@ func (a *Adapter) UpdateFilteredPolicies(sec string, ptype string, newPolicies [
 	}
 
 	tx := a.db.Begin()
-
+	str, args := line.queryString()
+	if err := tx.Where(str, args...).Find(&oldP).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
+	if err := tx.Where(str, args...).Delete([]CasbinRule{}).Error; err != nil {
+		tx.Rollback()
+		return nil, err
+	}
 	for i := range newP {
-		str, args := line.queryString()
-		if err := tx.Where(str, args...).Find(&oldP).Error; err != nil {
-			tx.Rollback()
-			return nil, err
-		}
-		if err := tx.Where(str, args...).Delete([]CasbinRule{}).Error; err != nil {
-			tx.Rollback()
-			return nil, err
-		}
 		if err := tx.Create(&newP[i]).Error; err != nil {
 			tx.Rollback()
 			return nil, err
