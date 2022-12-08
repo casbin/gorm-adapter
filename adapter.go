@@ -452,9 +452,9 @@ func loadPolicyLine(line CasbinRule, model model.Model) error {
 	p = p[:index]
 	err := persist.LoadPolicyArray(p, model)
 	if err != nil {
-		return nil
+		return err
 	}
-	return err
+	return nil
 }
 
 // LoadPolicy loads policy from database.
