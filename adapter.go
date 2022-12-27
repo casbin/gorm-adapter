@@ -328,7 +328,7 @@ func (a *Adapter) createDatabase() error {
 				return nil
 			}
 		}
-	} else if a.driverName != "sqlite3" {
+	} else if a.driverName != "sqlite3" && a.driverName != "sqlserver" {
 		err = db.Exec("CREATE DATABASE IF NOT EXISTS " + a.databaseName).Error
 	}
 	if err != nil {
@@ -354,6 +354,8 @@ func (a *Adapter) Open() error {
 			db, err = openDBConnection(a.driverName, a.dataSourceName+" dbname="+a.databaseName)
 		} else if a.driverName == "sqlite3" {
 			db, err = openDBConnection(a.driverName, a.dataSourceName)
+		} else if a.driverName == "sqlserver" {
+			db, err = openDBConnection(a.driverName, a.dataSourceName+"?database="+a.databaseName)
 		} else {
 			db, err = openDBConnection(a.driverName, a.dataSourceName+a.databaseName)
 		}
