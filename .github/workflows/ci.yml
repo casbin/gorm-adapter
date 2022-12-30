@@ -30,6 +30,13 @@ jobs:
           --health-retries 5
         ports:
           - 5432:5432
+      sqlserver:
+        image: mcr.microsoft.com/mssql/server:2022-latest
+        env:
+          ACCEPT_EULA: Y
+          MSSQL_SA_PASSWORD: SqlServer123
+        ports:
+          - 1433:1433
 
     steps:
       - name: Set up Go

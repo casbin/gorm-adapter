@@ -14,3 +14,4 @@ script:
 services:
   - mysql
   - postgresql
+  - sqlserver
