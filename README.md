@@ -8,7 +8,7 @@ Gorm Adapter
 > Find out more at: https://github.com/casbin/gorm-adapter/issues/78
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/casbin/gorm-adapter)](https://goreportcard.com/report/github.com/casbin/gorm-adapter)
-[![Build Status](https://travis-ci.com/casbin/gorm-adapter.svg?branch=master)](https://travis-ci.com/casbin/gorm-adapter)
+[![Go](https://github.com/casbin/gorm-adapter/actions/workflows/ci.yml/badge.svg)](https://github.com/casbin/gorm-adapter/actions/workflows/ci.yml)
 [![Coverage Status](https://coveralls.io/repos/github/casbin/gorm-adapter/badge.svg?branch=master)](https://coveralls.io/github/casbin/gorm-adapter?branch=master)
 [![Godoc](https://godoc.org/github.com/casbin/gorm-adapter?status.svg)](https://godoc.org/github.com/casbin/gorm-adapter)
 [![Release](https://img.shields.io/github/release/casbin/gorm-adapter.svg)](https://github.com/casbin/gorm-adapter/releases/latest)
