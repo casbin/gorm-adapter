@@ -903,6 +903,10 @@ func (a *Adapter) Preview(rules *[]CasbinRule, model model.Model) error {
 	return nil
 }
 
+func (a *Adapter) DB() *gorm.DB {
+	return a.db
+}
+
 func (c *CasbinRule) queryString() (interface{}, []interface{}) {
 	queryArgs := []interface{}{c.Ptype}
 
