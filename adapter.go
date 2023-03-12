@@ -903,7 +903,7 @@ func (a *Adapter) Preview(rules *[]CasbinRule, model model.Model) error {
 	return nil
 }
 
-func (a *Adapter) DB() *gorm.DB {
+func (a *Adapter) GetDb() *gorm.DB {
 	return a.db
 }
 
