@@ -5,7 +5,7 @@ go 1.20
 require (
 	github.com/casbin/casbin/v2 v2.55.1
 	github.com/glebarez/sqlite v1.7.0
-	github.com/go-sql-driver/mysql v1.6.0
+	github.com/go-sql-driver/mysql v1.7.0
 	github.com/lib/pq v1.10.2
 	github.com/stretchr/testify v1.8.0
 	gorm.io/driver/mysql v1.4.1
