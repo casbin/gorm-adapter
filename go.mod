@@ -7,7 +7,7 @@ require (
 	github.com/glebarez/sqlite v1.7.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.2
-	github.com/stretchr/testify v1.8.0
+	github.com/stretchr/testify v1.8.2
 	gorm.io/driver/mysql v1.4.1
 	gorm.io/driver/postgres v1.4.4
 	gorm.io/driver/sqlserver v1.4.1
