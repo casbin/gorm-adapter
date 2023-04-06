@@ -44,11 +44,11 @@ jobs:
         with:
           go-version: '1.20'
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: Run Unit tests
         run: go test -v -coverprofile=./profile.cov ./...
 
-      #- uses: actions/checkout@v2
+      #- uses: actions/checkout@v3
       #- uses: shogo82148/actions-goveralls@v1
       #  with:
       #    path-to-profile: ./profile.cov
@@ -58,7 +58,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
 
       - name: Run semantic-release
         if: github.repository == 'casbin/gorm-adapter' && github.event_name == 'push'
