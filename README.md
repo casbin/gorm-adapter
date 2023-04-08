@@ -48,7 +48,7 @@ func main() {
 	// If it doesn't exist, the adapter will create it automatically.
 	// You can also use an already existing gorm instance with gormadapter.NewAdapterByDB(gormInstance)
 	a, _ := gormadapter.NewAdapter("mysql", "mysql_username:mysql_password@tcp(127.0.0.1:3306)/") // Your driver and data source.
-	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	e := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	
 	// Or you can use an existing DB "abc" like this:
 	// The adapter will use the table named "casbin_rule".
