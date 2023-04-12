@@ -627,8 +627,8 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 		}
 	}
 
-	tx.Commit()
-	return nil
+	err = tx.Commit().Error
+	return err
 }
 
 // AddPolicy adds a policy rule to the storage.
