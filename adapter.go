@@ -579,8 +579,17 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 
 // SavePolicy saves policy to database.
 func (a *Adapter) SavePolicy(model model.Model) error {
-	err := a.truncateTable()
+	var err error
+	tx := a.db.Begin()
+
+	if a.db.Config.Name() == sqlite.DriverName {
+		err = tx.Exec(fmt.Sprintf("delete from %s", a.getFullTableName())).Error
+	} else {
+		err = tx.Exec(fmt.Sprintf("truncate table %s", a.getFullTableName())).Error
+	}
+
 	if err != nil {
+		tx.Rollback()
 		return err
 	}
 
@@ -590,7 +599,8 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 		for _, rule := range ast.Policy {
 			lines = append(lines, a.savePolicyLine(ptype, rule))
 			if len(lines) > flushEvery {
-				if err := a.db.Create(&lines).Error; err != nil {
+				if err := tx.Create(&lines).Error; err != nil {
+					tx.Rollback()
 					return err
 				}
 				lines = nil
@@ -602,7 +612,8 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 		for _, rule := range ast.Policy {
 			lines = append(lines, a.savePolicyLine(ptype, rule))
 			if len(lines) > flushEvery {
-				if err := a.db.Create(&lines).Error; err != nil {
+				if err := tx.Create(&lines).Error; err != nil {
+					tx.Rollback()
 					return err
 				}
 				lines = nil
@@ -610,11 +621,13 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 		}
 	}
 	if len(lines) > 0 {
-		if err := a.db.Create(&lines).Error; err != nil {
+		if err := tx.Create(&lines).Error; err != nil {
+			tx.Rollback()
 			return err
 		}
 	}
 
+	tx.Commit()
 	return nil
 }
 
