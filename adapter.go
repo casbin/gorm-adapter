@@ -580,7 +580,7 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 // SavePolicy saves policy to database.
 func (a *Adapter) SavePolicy(model model.Model) error {
 	var err error
-	tx := a.db.Begin()
+	tx := a.db.Clauses(dbresolver.Write).Begin()
 
 	if a.db.Config.Name() == sqlite.DriverName {
 		err = tx.Exec(fmt.Sprintf("delete from %s", a.getFullTableName())).Error
