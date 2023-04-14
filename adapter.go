@@ -234,9 +234,9 @@ func InitDbResolver(dbArr []gorm.Dialector, dbNames []string) (DbPool, error) {
 
 func NewAdapterByMulDb(dbPool DbPool, dbName string, prefix string, tableName string) (*Adapter, error) {
 	//change DB
-	dbPool.switchDb(dbName)
+	db := dbPool.switchDb(dbName)
 
-	return NewAdapterByDBUseTableName(dbPool.source, prefix, tableName)
+	return NewAdapterByDBUseTableName(db, prefix, tableName)
 }
 
 // NewFilteredAdapter is the constructor for FilteredAdapter.
