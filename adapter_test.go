@@ -16,6 +16,11 @@ package gormadapter
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"strings"
+	"testing"
+
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
 	"github.com/glebarez/sqlite"
@@ -27,10 +32,6 @@ import (
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
 	"gorm.io/gorm/logger"
-	"log"
-	"os"
-	"strings"
-	"testing"
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
