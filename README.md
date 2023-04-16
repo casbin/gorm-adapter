@@ -149,6 +149,81 @@ func main() {
 	}
 }
 ```
+## ConditionsToGormQuery
+
+`ConditionsToGormQuery()` is a function that converts multiple query conditions into a GORM query statement
+You can use the `GetAllowedObjectConditions()` API of Casbin to get conditions,
+and choose the way of combining conditions through `combineType`.
+
+`ConditionsToGormQuery()` allows Casbin to be combined with SQL, and you can use it to implement many functions.
+### Example: GetAllowedRecordsForUser
+* model example: [object_conditions_model.conf](examples/object_conditions_model.conf)
+* policy example: [object_conditions_policy.csv](examples/object_conditions_policy.csv)
+
+DataBase example:
+
+|id|title|author|publisher|publish_data|price|category_id|
+|--|--|--|--|--|--|--|
+|1|book1|author1|publisher1|2023-04-09 16:23:42|10|1|
+|2|book2|author1|publisher1|2023-04-09 16:23:44|20|2|
+|3|book3|author2|publisher1|2023-04-09 16:23:44|30|1|
+|4|book4|author2|publisher2|2023-04-09 16:23:45|10|3|
+|5|book5|author3|publisher2|2023-04-09 16:23:45|50|1|
+|6|book6|author3|publisher2|2023-04-09 16:23:46|60|2|
+
+
+```go
+type Book struct {
+    ID          int
+    Title       string
+    Author      string
+    Publisher   string
+    PublishDate time.Time
+    Price       float64
+    CategoryID  int
+}
+
+func TestGetAllowedRecordsForUser(t *testing.T) {
+	e, _ := casbin.NewEnforcer("examples/object_conditions_model.conf", "examples/object_conditions_policy.csv")
+
+	conditions, err := e.GetAllowedObjectConditions("alice", "read", "r.obj.")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(conditions)
+
+	dsn := "root:root@tcp(127.0.0.1:3307)/test?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("CombineTypeOr")
+	rows, err := ConditionsToGormQuery(db, conditions, CombineTypeOr).Model(&Book{}).Rows()
+	defer rows.Close()
+	var b Book
+	for rows.Next() {
+		err := db.ScanRows(rows, &b)
+		if err != nil {
+			panic(err)
+		}
+		log.Println(b)
+	}
+
+	fmt.Println("CombineTypeAnd")
+	rows, err = ConditionsToGormQuery(db, conditions, CombineTypeAnd).Model(&Book{}).Rows()
+	defer rows.Close()
+	for rows.Next() {
+		err := db.ScanRows(rows, &b)
+		if err != nil {
+			panic(err)
+		}
+		log.Println(b)
+	}
+}
+```
+
+
 ## Getting Help
 
 - [Casbin](https://github.com/casbin/casbin)

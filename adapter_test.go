@@ -20,6 +20,7 @@ import (
 	"os"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
@@ -696,5 +697,54 @@ func TestTransaction(t *testing.T) {
 	})
 	if err != nil {
 		return
+	}
+}
+
+type Book struct {
+	ID          int
+	Title       string
+	Author      string
+	Publisher   string
+	PublishDate time.Time
+	Price       float64
+	CategoryID  int
+}
+
+func TestGetAllowedRecordsForUser(t *testing.T) {
+	e, _ := casbin.NewEnforcer("examples/object_conditions_model.conf", "examples/object_conditions_policy.csv")
+
+	conditions, err := e.GetAllowedObjectConditions("alice", "read", "r.obj.")
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(conditions)
+
+	dsn := "root:root@tcp(127.0.0.1:3307)/test?charset=utf8mb4&parseTime=True&loc=Local"
+	db, err := gorm.Open(mysql.Open(dsn), &gorm.Config{})
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("CombineTypeOr")
+	rows, err := ConditionsToGormQuery(db, conditions, CombineTypeOr).Model(&Book{}).Rows()
+	defer rows.Close()
+	var b Book
+	for rows.Next() {
+		err := db.ScanRows(rows, &b)
+		if err != nil {
+			panic(err)
+		}
+		log.Println(b)
+	}
+
+	fmt.Println("CombineTypeAnd")
+	rows, err = ConditionsToGormQuery(db, conditions, CombineTypeAnd).Model(&Book{}).Rows()
+	defer rows.Close()
+	for rows.Next() {
+		err := db.ScanRows(rows, &b)
+		if err != nil {
+			panic(err)
+		}
+		log.Println(b)
 	}
 }
