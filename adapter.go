@@ -977,3 +977,27 @@ func (c *CasbinRule) toStringPolicy() []string {
 	}
 	return policy
 }
+
+// CombineType represents different types of condition combining strategies
+type CombineType uint32
+
+const (
+	CombineTypeOr  CombineType = iota // Combine conditions with OR operator
+	CombineTypeAnd                    // Combine conditions with AND operator
+)
+
+// ConditionsToGormQuery is a function that converts multiple query conditions into a GORM query statement
+// You can use the GetAllowedObjectConditions() API of Casbin to get conditions,
+// and choose the way of combining conditions through combineType.
+func ConditionsToGormQuery(db *gorm.DB, conditions []string, combineType CombineType) *gorm.DB {
+	queryDB := db
+	for _, cond := range conditions {
+		switch combineType {
+		case CombineTypeOr:
+			queryDB = queryDB.Or(cond)
+		case CombineTypeAnd:
+			queryDB = queryDB.Where(cond)
+		}
+	}
+	return queryDB
+}
