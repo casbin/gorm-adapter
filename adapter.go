@@ -735,11 +735,11 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 // checkQueryfield make sure the fields won't all be empty (string --> "")
 func checkQueryField(fieldValues []string) error {
 	for _, fieldValue := range fieldValues {
-		if fieldValue != "" {
-			return nil
+		if fieldValue == "" {
+			return errors.New("the query field cannot all be empty string (\"\"), please check")
 		}
 	}
-	return errors.New("the query field cannot all be empty string (\"\"), please check")
+	return nil
 }
 
 func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
