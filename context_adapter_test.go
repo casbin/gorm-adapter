@@ -27,7 +27,7 @@ func mockExecuteWithContextTimeOut(ctx context.Context, fn func() error) error {
 }
 
 func clearDBPolicy() (*casbin.Enforcer, *ContextAdapter) {
-	ca, err := NewContextAdapter("mysql", "root:root@tcp(127.0.0.1:3307)/", "casbin")
+	ca, err := NewContextAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin")
 	if err != nil {
 		panic(err)
 	}
