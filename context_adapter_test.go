@@ -44,7 +44,7 @@ func clearDBPolicy() (*casbin.Enforcer, *ContextAdapter) {
 func TestContextAdapter_LoadPolicyCtx(t *testing.T) {
 	e, ca := clearDBPolicy()
 
-	db, _ := openDBConnection("mysql", "root:@tcp(127.0.0.1:3307)/casbin")
+	db, _ := openDBConnection("mysql", "root:@tcp(127.0.0.1:3306)/casbin")
 	policy := &CasbinRule{
 		Ptype: "p",
 		V0:    "alice",
