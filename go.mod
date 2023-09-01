@@ -3,7 +3,8 @@ module github.com/casbin/gorm-adapter/v3
 go 1.20
 
 require (
-	github.com/casbin/casbin/v2 v2.69.1
+	github.com/agiledragon/gomonkey/v2 v2.2.0
+	github.com/casbin/casbin/v2 v2.77.1
 	github.com/glebarez/sqlite v1.7.0
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.2
@@ -37,6 +38,9 @@ require (
 	github.com/microsoft/go-mssqldb v0.17.0 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230126093431-47fa9a501578 // indirect
+	github.com/tidwall/gjson v1.14.4 // indirect
+	github.com/tidwall/match v1.1.1 // indirect
+	github.com/tidwall/pretty v1.2.0 // indirect
 	golang.org/x/crypto v0.0.0-20221005025214-4161e89ecf1b // indirect
 	golang.org/x/sys v0.4.0 // indirect
 	golang.org/x/text v0.3.8 // indirect

@@ -223,6 +223,20 @@ func TestGetAllowedRecordsForUser(t *testing.T) {
 }
 ```
 
+## Context Adapter
+
+`gormadapter` supports adapter with context, the following is a timeout control implemented using context
+
+```go
+ca, _ := NewContextAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin")
+// Limited time 300s
+ctx, cancel := context.WithTimeout(context.Background(), 300*time.Microsecond)
+defer cancel()
+err := ca.AddPolicyCtx(ctx, "p", "p", []string{"alice", "data1", "read"})
+if err != nil {
+    panic(err)
+}
+```
 
 ## Getting Help
 
