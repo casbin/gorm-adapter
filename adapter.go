@@ -436,7 +436,7 @@ func (a *Adapter) dropTable() error {
 
 func (a *Adapter) truncateTable() error {
 	var sql string
-	switch a.driverName {
+	switch a.db.Config.Name() {
 	case sqlite.DriverName:
 	case "sqlite3":
 		sql = fmt.Sprintf("delete from %s", a.getFullTableName())
