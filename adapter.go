@@ -438,6 +438,7 @@ func (a *Adapter) truncateTable() error {
 	var sql string
 	switch a.db.Config.Name() {
 	case sqlite.DriverName:
+		sql = fmt.Sprintf("delete from %s", a.getFullTableName())
 	case "sqlite3":
 		sql = fmt.Sprintf("delete from %s", a.getFullTableName())
 	case "postgres":
