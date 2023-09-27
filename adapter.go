@@ -443,7 +443,9 @@ func (a *Adapter) truncateTable() error {
 	case "postgres":
 		sql = fmt.Sprintf("truncate table %s RESTART IDENTITY", a.getFullTableName())
 	case "sqlserver":
+		sql = fmt.Sprintf("truncate table %s", a.getFullTableName())
 	case "mysql":
+		sql = fmt.Sprintf("truncate table %s", a.getFullTableName())
 	default:
 		sql = fmt.Sprintf("truncate table %s", a.getFullTableName())
 	}
