@@ -435,10 +435,19 @@ func (a *Adapter) dropTable() error {
 }
 
 func (a *Adapter) truncateTable() error {
-	if a.db.Config.Name() == sqlite.DriverName {
-		return a.db.Exec(fmt.Sprintf("delete from %s", a.getFullTableName())).Error
+	var sql string
+	switch a.driverName {
+	case sqlite.DriverName:
+		sql = fmt.Sprintf("delete from %s", a.getFullTableName())
+	case "postgres":
+		sql = fmt.Sprintf("truncate table %s RESTART IDENTITY", a.getFullTableName())
+	case "sqlserver":
+	case "mysql":
+		sql = fmt.Sprintf("truncate table %s", a.getFullTableName())
+	default:
+		sql = fmt.Sprintf("delete from %s where 1 = 1", a.getFullTableName())
 	}
-	return a.db.Exec(fmt.Sprintf("truncate table %s", a.getFullTableName())).Error
+	return a.db.Exec(sql).Error
 }
 
 func loadPolicyLine(line CasbinRule, model model.Model) error {
@@ -582,11 +591,7 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 	var err error
 	tx := a.db.Clauses(dbresolver.Write).Begin()
 
-	if a.db.Config.Name() == sqlite.DriverName {
-		err = tx.Exec(fmt.Sprintf("delete from %s", a.getFullTableName())).Error
-	} else {
-		err = tx.Exec(fmt.Sprintf("truncate table %s", a.getFullTableName())).Error
-	}
+	err = a.truncateTable()
 
 	if err != nil {
 		tx.Rollback()
