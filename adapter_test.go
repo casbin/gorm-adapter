@@ -27,6 +27,8 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	_ "github.com/lib/pq"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+	"golang.org/x/sync/errgroup"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
@@ -697,4 +699,26 @@ func TestTransaction(t *testing.T) {
 	if err != nil {
 		return
 	}
+}
+
+func TestTransactionRace(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+
+	concurrency := 10
+
+	var g errgroup.Group
+	for i := 0; i < concurrency; i++ {
+		i := i
+		g.Go(func() error {
+			return e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+				_, err := e.AddPolicy("jack", fmt.Sprintf("data%d", i), "write")
+				if err != nil {
+					return err
+				}
+				return nil
+			})
+		})
+	}
+	require.NoError(t, g.Wait())
 }
