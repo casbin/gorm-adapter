@@ -9,10 +9,11 @@ require (
 	github.com/go-sql-driver/mysql v1.6.0
 	github.com/lib/pq v1.10.2
 	github.com/stretchr/testify v1.8.0
+	golang.org/x/sync v0.0.0-20190423024810-112230192c58
 	gorm.io/driver/mysql v1.4.1
 	gorm.io/driver/postgres v1.4.4
 	gorm.io/driver/sqlserver v1.4.1
-	gorm.io/gorm v1.24.5
+	gorm.io/gorm v1.25.8
 	gorm.io/plugin/dbresolver v1.3.0
 )
 
