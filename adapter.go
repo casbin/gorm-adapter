@@ -21,7 +21,6 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"sync/atomic"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -82,7 +81,6 @@ type Adapter struct {
 	dbSpecified    bool
 	db             *gorm.DB
 	isFiltered     bool
-	isTransaction  atomic.Bool
 }
 
 // finalizer is the destructor for Adapter.
@@ -666,15 +664,9 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 }
 
 // Transaction perform a set of operations within a transaction
-// will return error while operation failed and transaction in concurrent environment
 func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
 	var err error
 	oriAdapter := a.db
-
-	// fail fast while transaction in concurrent environment
-	if !a.isTransaction.CompareAndSwap(false, true) {
-		return errors.New("cannot start a transaction within another transaction")
-	}
 	// reload policy from database to sync with the transaction
 	defer func() {
 		e.SetAdapter(&Adapter{db: oriAdapter})
@@ -682,7 +674,6 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 		if err != nil {
 			panic(err)
 		}
-		a.isTransaction.Store(false)
 	}()
 	copyDB := *a.db
 	tx := copyDB.Begin(opts...)
