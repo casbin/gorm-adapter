@@ -705,7 +705,7 @@ func TestTransactionRace(t *testing.T) {
 	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
-	concurrency := 10
+	concurrency := 100
 
 	var g errgroup.Group
 	for i := 0; i < concurrency; i++ {
@@ -721,4 +721,8 @@ func TestTransactionRace(t *testing.T) {
 		})
 	}
 	require.NoError(t, g.Wait())
+
+	for i := 0; i < concurrency; i++ {
+		require.True(t, e.HasPolicy("jack", fmt.Sprintf("data%d", i), "write"))
+	}
 }
