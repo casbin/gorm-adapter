@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
+	"sync"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -81,6 +82,7 @@ type Adapter struct {
 	dbSpecified    bool
 	db             *gorm.DB
 	isFiltered     bool
+	transactionMu  *sync.Mutex
 }
 
 // finalizer is the destructor for Adapter.
@@ -134,6 +136,7 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	a.tableName = defaultTableName
 	a.databaseName = defaultDatabaseName
 	a.dbSpecified = false
+	a.transactionMu = &sync.Mutex{}
 
 	if len(params) == 1 {
 		switch p1 := params[0].(type) {
@@ -665,6 +668,8 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 
 // Transaction perform a set of operations within a transaction
 func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
+	a.transactionMu.Lock()
+	defer a.transactionMu.Unlock()
 	var err error
 	oriAdapter := a.db
 	// reload policy from database to sync with the transaction
