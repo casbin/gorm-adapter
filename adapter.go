@@ -22,6 +22,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -83,6 +84,7 @@ type Adapter struct {
 	db             *gorm.DB
 	isFiltered     bool
 	transactionMu  *sync.Mutex
+	muInitialize   atomic.Bool
 }
 
 // finalizer is the destructor for Adapter.
@@ -668,6 +670,16 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 
 // Transaction perform a set of operations within a transaction
 func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
+	// ensure the transactionMu is initialized
+	if a.transactionMu == nil {
+		for a.muInitialize.CompareAndSwap(false, true) {
+			if a.transactionMu == nil {
+				a.transactionMu = &sync.Mutex{}
+			}
+			a.muInitialize.Store(false)
+		}
+	}
+	// lock the transactionMu to ensure the transaction is thread-safe
 	a.transactionMu.Lock()
 	defer a.transactionMu.Unlock()
 	var err error
