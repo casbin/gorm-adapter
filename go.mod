@@ -3,7 +3,6 @@ module github.com/casbin/gorm-adapter/v3
 go 1.20
 
 require (
-	github.com/agiledragon/gomonkey/v2 v2.2.0
 	github.com/casbin/casbin/v2 v2.77.1
 	github.com/glebarez/sqlite v1.7.0
 	github.com/go-sql-driver/mysql v1.7.0

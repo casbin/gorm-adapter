@@ -478,8 +478,13 @@ func loadPolicyLine(line CasbinRule, model model.Model) error {
 
 // LoadPolicy loads policy from database.
 func (a *Adapter) LoadPolicy(model model.Model) error {
+	return a.LoadPolicyCtx(context.Background(), model)
+}
+
+// LoadPolicyCtx loads policy from database.
+func (a *Adapter) LoadPolicyCtx(ctx context.Context, model model.Model) error {
 	var lines []CasbinRule
-	if err := a.db.Order("ID").Find(&lines).Error; err != nil {
+	if err := a.db.WithContext(ctx).Order("ID").Find(&lines).Error; err != nil {
 		return err
 	}
 	err := a.Preview(&lines, model)
@@ -596,8 +601,13 @@ func (a *Adapter) savePolicyLine(ptype string, rule []string) CasbinRule {
 
 // SavePolicy saves policy to database.
 func (a *Adapter) SavePolicy(model model.Model) error {
+	return a.SavePolicyCtx(context.Background(), model)
+}
+
+// SavePolicyCtx saves policy to database.
+func (a *Adapter) SavePolicyCtx(ctx context.Context, model model.Model) error {
 	var err error
-	tx := a.db.Clauses(dbresolver.Write).Begin()
+	tx := a.db.WithContext(ctx).Clauses(dbresolver.Write).Begin()
 
 	err = a.truncateTable()
 
@@ -646,15 +656,25 @@ func (a *Adapter) SavePolicy(model model.Model) error {
 
 // AddPolicy adds a policy rule to the storage.
 func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
+	return a.AddPolicyCtx(context.Background(), sec, ptype, rule)
+}
+
+// AddPolicyCtx adds a policy rule to the storage.
+func (a *Adapter) AddPolicyCtx(ctx context.Context, sec string, ptype string, rule []string) error {
 	line := a.savePolicyLine(ptype, rule)
-	err := a.db.Create(&line).Error
+	err := a.db.WithContext(ctx).Create(&line).Error
 	return err
 }
 
 // RemovePolicy removes a policy rule from the storage.
 func (a *Adapter) RemovePolicy(sec string, ptype string, rule []string) error {
+	return a.RemovePolicyCtx(context.Background(), sec, ptype, rule)
+}
+
+// RemovePolicyCtx removes a policy rule from the storage.
+func (a *Adapter) RemovePolicyCtx(ctx context.Context, sec string, ptype string, rule []string) error {
 	line := a.savePolicyLine(ptype, rule)
-	err := a.rawDelete(a.db, line) //can't use db.Delete as we're not using primary key https://gorm.io/docs/update.html
+	err := a.rawDelete(ctx, a.db, line) //can't use db.Delete as we're not using primary key https://gorm.io/docs/update.html
 	return err
 }
 
@@ -709,10 +729,15 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 
 // RemovePolicies removes multiple policy rules from the storage.
 func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) error {
+	return a.RemovePoliciesCtx(context.Background(), sec, ptype, rules)
+}
+
+// RemovePoliciesCtx removes multiple policy rules from the storage.
+func (a *Adapter) RemovePoliciesCtx(ctx context.Context, sec string, ptype string, rules [][]string) error {
 	return a.db.Transaction(func(tx *gorm.DB) error {
 		for _, rule := range rules {
 			line := a.savePolicyLine(ptype, rule)
-			if err := a.rawDelete(tx, line); err != nil { //can't use db.Delete as we're not using primary key https://gorm.io/docs/update.html
+			if err := a.rawDelete(ctx, tx, line); err != nil { //can't use db.Delete as we're not using primary key https://gorm.io/docs/update.html
 			}
 		}
 		return nil
@@ -721,12 +746,17 @@ func (a *Adapter) RemovePolicies(sec string, ptype string, rules [][]string) err
 
 // RemoveFilteredPolicy removes policy rules that match the filter from the storage.
 func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int, fieldValues ...string) error {
+	return a.RemoveFilteredPolicyCtx(context.Background(), sec, ptype, fieldIndex, fieldValues...)
+}
+
+// RemoveFilteredPolicyCtx removes policy rules that match the filter from the storage.
+func (a *Adapter) RemoveFilteredPolicyCtx(ctx context.Context, sec string, ptype string, fieldIndex int, fieldValues ...string) error {
 	line := a.getTableInstance()
 
 	line.Ptype = ptype
 
 	if fieldIndex == -1 {
-		return a.rawDelete(a.db, *line)
+		return a.rawDelete(ctx, a.db, *line)
 	}
 
 	err := checkQueryField(fieldValues)
@@ -752,7 +782,7 @@ func (a *Adapter) RemoveFilteredPolicy(sec string, ptype string, fieldIndex int,
 	if fieldIndex <= 5 && 5 < fieldIndex+len(fieldValues) {
 		line.V5 = fieldValues[5-fieldIndex]
 	}
-	err = a.rawDelete(a.db, *line)
+	err = a.rawDelete(ctx, a.db, *line)
 	return err
 }
 
@@ -766,7 +796,7 @@ func checkQueryField(fieldValues []string) error {
 	return errors.New("the query field cannot all be empty string (\"\"), please check")
 }
 
-func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
+func (a *Adapter) rawDelete(ctx context.Context, db *gorm.DB, line CasbinRule) error {
 	queryArgs := []interface{}{line.Ptype}
 
 	queryStr := "ptype = ?"
@@ -795,7 +825,7 @@ func (a *Adapter) rawDelete(db *gorm.DB, line CasbinRule) error {
 		queryArgs = append(queryArgs, line.V5)
 	}
 	args := append([]interface{}{queryStr}, queryArgs...)
-	err := db.Delete(a.getTableInstance(), args...).Error
+	err := db.WithContext(ctx).Delete(a.getTableInstance(), args...).Error
 	return err
 }
 
