@@ -391,6 +391,9 @@ func (a *Adapter) getTableInstance() *CasbinRule {
 
 func (a *Adapter) getFullTableName() string {
 	if a.tablePrefix != "" {
+		if strings.HasSuffix(a.tablePrefix, "_") {
+			return a.tablePrefix + a.tableName
+		}
 		return a.tablePrefix + "_" + a.tableName
 	}
 	return a.tableName
