@@ -681,6 +681,43 @@ func TestAddPolicies(t *testing.T) {
 	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}, {"jack", "data1", "read"}, {"jack2", "data1", "read"}})
 }
 
+func TestAddPolicy(t *testing.T) {
+	tests := []struct {
+		driverName     string
+		dataSourceName string
+	}{
+		{driverName: "mysql", dataSourceName: "root:@tcp(127.0.0.1:3306)/"},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(test.driverName, func(t *testing.T) {
+			t.Parallel()
+			a := initAdapter(t, test.driverName, test.dataSourceName, "casbin", "casbin_rule")
+			e1, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+			e2, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+
+			policy := []string{"alice", "data1", "TestAddPolicy"}
+
+			ok, err := e1.AddPolicy(policy)
+			if err != nil {
+				t.Errorf("e1.AddPolicy() got err %v", err)
+			}
+			if !ok {
+				t.Errorf("e1.AddPolicy() got false, want true")
+			}
+
+			ok, err = e2.AddPolicy(policy)
+			if err != nil {
+				t.Errorf("e2.AddPolicy() got err %v", err)
+			}
+			if !ok {
+				t.Errorf("e2.AddPolicy() got false, want true")
+			}
+		})
+	}
+}
+
 func TestTransaction(t *testing.T) {
 	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
