@@ -685,17 +685,18 @@ func TestAddPolicy(t *testing.T) {
 	tests := []struct {
 		driverName     string
 		dataSourceName string
+		params         []any
 	}{
-		{"mysql", "root:@tcp(127.0.0.1:3306)/"},
-		{"postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"},
-		{"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433"},
+		{"mysql", "root:@tcp(127.0.0.1:3306)/", []any{"casbin", "casbin_rule"}},
+		{"postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable", nil},
+		{"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433", []any{"master", "casbin_rule"}},
 	}
 
 	for _, test := range tests {
 		test := test
 		t.Run(test.driverName, func(t *testing.T) {
 			t.Parallel()
-			a := initAdapter(t, test.driverName, test.dataSourceName, "casbin", "casbin_rule")
+			a := initAdapter(t, test.driverName, test.dataSourceName, test.params...)
 			e1, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 			e2, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
