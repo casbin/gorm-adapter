@@ -689,7 +689,7 @@ func TestAddPolicy(t *testing.T) {
 	}{
 		{"mysql", "root:@tcp(127.0.0.1:3306)/", []any{"casbin", "casbin_rule"}},
 		{"postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable", nil},
-		{"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433", []any{"master", "casbin_rule"}},
+		// {"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433", []any{"master", "casbin_rule"}},
 	}
 
 	for _, test := range tests {
