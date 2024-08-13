@@ -686,7 +686,9 @@ func TestAddPolicy(t *testing.T) {
 		driverName     string
 		dataSourceName string
 	}{
-		{driverName: "mysql", dataSourceName: "root:@tcp(127.0.0.1:3306)/"},
+		{"mysql", "root:@tcp(127.0.0.1:3306)/"},
+		{"postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable"},
+		{"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433"},
 	}
 
 	for _, test := range tests {
