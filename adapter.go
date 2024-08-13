@@ -31,6 +31,7 @@ import (
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
 	"gorm.io/gorm"
+	"gorm.io/gorm/clause"
 	"gorm.io/gorm/logger"
 	"gorm.io/plugin/dbresolver"
 )
@@ -626,7 +627,7 @@ func (a *Adapter) SavePolicyCtx(ctx context.Context, model model.Model) error {
 		for _, rule := range ast.Policy {
 			lines = append(lines, a.savePolicyLine(ptype, rule))
 			if len(lines) > flushEvery {
-				if err := tx.Create(&lines).Error; err != nil {
+				if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error; err != nil {
 					tx.Rollback()
 					return err
 				}
@@ -639,7 +640,7 @@ func (a *Adapter) SavePolicyCtx(ctx context.Context, model model.Model) error {
 		for _, rule := range ast.Policy {
 			lines = append(lines, a.savePolicyLine(ptype, rule))
 			if len(lines) > flushEvery {
-				if err := tx.Create(&lines).Error; err != nil {
+				if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error; err != nil {
 					tx.Rollback()
 					return err
 				}
@@ -648,7 +649,7 @@ func (a *Adapter) SavePolicyCtx(ctx context.Context, model model.Model) error {
 		}
 	}
 	if len(lines) > 0 {
-		if err := tx.Create(&lines).Error; err != nil {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error; err != nil {
 			tx.Rollback()
 			return err
 		}
@@ -666,7 +667,7 @@ func (a *Adapter) AddPolicy(sec string, ptype string, rule []string) error {
 // AddPolicyCtx adds a policy rule to the storage.
 func (a *Adapter) AddPolicyCtx(ctx context.Context, sec string, ptype string, rule []string) error {
 	line := a.savePolicyLine(ptype, rule)
-	err := a.db.WithContext(ctx).Create(&line).Error
+	err := a.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&line).Error
 	return err
 }
 
@@ -689,7 +690,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 		line := a.savePolicyLine(ptype, rule)
 		lines = append(lines, line)
 	}
-	return a.db.Create(&lines).Error
+	return a.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error
 }
 
 // Transaction perform a set of operations within a transaction
@@ -930,7 +931,7 @@ func (a *Adapter) UpdateFilteredPolicies(sec string, ptype string, newPolicies [
 		return nil, err
 	}
 	for i := range newP {
-		if err := tx.Create(&newP[i]).Error; err != nil {
+		if err := tx.Clauses(clause.OnConflict{DoNothing: true}).Create(&newP[i]).Error; err != nil {
 			tx.Rollback()
 			return nil, err
 		}
