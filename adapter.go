@@ -314,7 +314,7 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 	} else if driverName == "sqlite3" {
 		db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
 	} else {
-		return nil, errors.New("Database dialect '" + driverName + "' is not supported. Supported databases are postgres, mysql and sqlserver")
+		return nil, errors.New("Database dialect '" + driverName + "' is not supported. Supported databases are postgres, mysql, sqlserver and sqlite3")
 	}
 	if err != nil {
 		return nil, err
