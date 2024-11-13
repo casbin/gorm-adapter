@@ -707,10 +707,9 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 	a.transactionMu.Lock()
 	defer a.transactionMu.Unlock()
 	var err error
-	oriAdapter := a.db
 	// reload policy from database to sync with the transaction
 	defer func() {
-		e.SetAdapter(&Adapter{db: oriAdapter, transactionMu: a.transactionMu})
+		e.SetAdapter(a.Copy())
 		err = e.LoadPolicy()
 		if err != nil {
 			panic(err)
@@ -718,7 +717,7 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 	}()
 	copyDB := *a.db
 	tx := copyDB.Begin(opts...)
-	b := &Adapter{db: tx, transactionMu: a.transactionMu}
+	b := a.Copy()
 	// copy enforcer to set the new adapter with transaction tx
 	copyEnforcer := e
 	copyEnforcer.SetAdapter(b)
@@ -944,6 +943,21 @@ func (a *Adapter) UpdateFilteredPolicies(sec string, ptype string, newPolicies [
 		oldPolicies = append(oldPolicies, oldPolicy)
 	}
 	return oldPolicies, tx.Commit().Error
+}
+
+func (a *Adapter) Copy() *Adapter {
+	oriAdapter := a.db
+	return &Adapter{
+		db:             oriAdapter,
+		transactionMu:  a.transactionMu,
+		driverName:     a.driverName,
+		dataSourceName: a.dataSourceName,
+		databaseName:   a.databaseName,
+		tablePrefix:    a.tablePrefix,
+		tableName:      a.tableName,
+		dbSpecified:    a.dbSpecified,
+		isFiltered:     a.isFiltered,
+	}
 }
 
 // Preview Pre-checking to avoid causing partial load success and partial failure deep
