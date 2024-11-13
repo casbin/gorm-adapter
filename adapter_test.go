@@ -766,3 +766,33 @@ func TestTransactionRace(t *testing.T) {
 		require.True(t, e.HasPolicy("jack", fmt.Sprintf("data%d", i), "write"))
 	}
 }
+
+func TestTransactionWithSavePolicy(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+	defer func() {
+		e.ClearPolicy()
+		err := e.SavePolicy()
+		if err != nil {
+			t.Fatalf("save policy err %v", err)
+		}
+	}()
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		_, err = e.AddPolicy("jack", "data2", "write")
+		if err != nil {
+			return err
+		}
+		err = e.SavePolicy()
+		if err != nil {
+			return err
+		}
+		return nil
+	})
+	if err != nil {
+		return
+	}
+}
