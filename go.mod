@@ -9,11 +9,11 @@ require (
 	github.com/lib/pq v1.10.2
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.1.0
-	gorm.io/driver/mysql v1.5.6
+	gorm.io/driver/mysql v1.5.7
 	gorm.io/driver/postgres v1.5.9
 	gorm.io/driver/sqlserver v1.5.3
-	gorm.io/gorm v1.25.10
-	gorm.io/plugin/dbresolver v1.3.0
+	gorm.io/gorm v1.25.12
+	gorm.io/plugin/dbresolver v1.5.3
 )
 
 require (
