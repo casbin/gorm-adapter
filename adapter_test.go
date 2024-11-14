@@ -37,7 +37,11 @@ import (
 )
 
 func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
-	myRes := e.GetPolicy()
+	myRes, err := e.GetPolicy()
+	if err != nil {
+		panic(err)
+	}
+
 	log.Print("Policy: ", myRes)
 
 	if !util.Array2DEquals(res, myRes) {
@@ -46,7 +50,11 @@ func testGetPolicy(t *testing.T, e *casbin.Enforcer, res [][]string) {
 }
 
 func testGetPolicyWithoutOrder(t *testing.T, e *casbin.Enforcer, res [][]string) {
-	myRes := e.GetPolicy()
+	myRes, err := e.GetPolicy()
+	if err != nil {
+		panic(err)
+	}
+
 	log.Print("Policy: ", myRes)
 
 	if !arrayEqualsWithoutOrder(myRes, res) {
@@ -763,7 +771,12 @@ func TestTransactionRace(t *testing.T) {
 	require.NoError(t, g.Wait())
 
 	for i := 0; i < concurrency; i++ {
-		require.True(t, e.HasPolicy("jack", fmt.Sprintf("data%d", i), "write"))
+		hasPolicy, err := e.HasPolicy("jack", fmt.Sprintf("data%d", i), "write")
+		if err != nil {
+			panic(err)
+		}
+
+		require.True(t, hasPolicy)
 	}
 }
 
