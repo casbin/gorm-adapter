@@ -694,7 +694,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 }
 
 // Transaction perform a set of operations within a transaction
-func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
+func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer, *gorm.DB) error, opts ...*sql.TxOptions) error {
 	// ensure the transactionMu is initialized
 	if a.transactionMu == nil {
 		a.muInitialize.Do(func() {
@@ -721,7 +721,7 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 	// copy enforcer to set the new adapter with transaction tx
 	copyEnforcer := e
 	copyEnforcer.SetAdapter(b)
-	err = fc(copyEnforcer)
+	err = fc(copyEnforcer, tx)
 	if err != nil {
 		tx.Rollback()
 		return err
