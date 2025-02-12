@@ -718,6 +718,7 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer, *gor
 	copyDB := *a.db
 	tx := copyDB.Begin(opts...)
 	b := a.Copy()
+	b.db = tx
 	// copy enforcer to set the new adapter with transaction tx
 	copyEnforcer := e
 	copyEnforcer.SetAdapter(b)
