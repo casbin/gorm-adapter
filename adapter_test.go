@@ -15,6 +15,7 @@
 package gormadapter
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -747,6 +748,31 @@ func TestTransaction(t *testing.T) {
 	if err != nil {
 		return
 	}
+}
+func TestTransactionRollback(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer, tx *gorm.DB) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		return errors.New("some error")
+	})
+	if err != nil {
+		//show ：some error
+		// transaction rollback,ignore the error
+	}
+
+	hasPolicy, err := e.HasPolicy("jack", "data1", "write")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasPolicy {
+		t.Fatal("transaction rollback failed")
+	}
+
 }
 
 func TestTransactionRace(t *testing.T) {
