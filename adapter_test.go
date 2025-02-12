@@ -15,6 +15,7 @@
 package gormadapter
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -531,7 +532,7 @@ func testBasicFeatures(t *testing.T) {
 }
 
 func TestAdapters(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a := initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	testAutoSave(t, a)
 	testSaveLoad(t, a)
 
@@ -591,7 +592,7 @@ func TestAdapters(t *testing.T) {
 	a = initAdapterWithGormInstance(t, db)
 	testFilteredPolicy(t, a)
 
-	db, err = gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	db, err = gorm.Open(mysql.Open("root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
 	if err != nil {
 		panic(err)
 	}
@@ -647,7 +648,7 @@ func TestAdapters(t *testing.T) {
 	testUpdatePolicies(t, a)
 	testUpdateFilteredPolicies(t, a)
 
-	a = initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a = initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	a.AddLogger(logger.New(log.New(os.Stdout, "\r\n", log.LstdFlags), logger.Config{}))
 	testUpdatePolicy(t, a)
 	testUpdatePolicies(t, a)
@@ -695,7 +696,7 @@ func TestAddPolicy(t *testing.T) {
 		dataSourceName string
 		params         []any
 	}{
-		{"mysql", "root:@tcp(127.0.0.1:3306)/", []any{"casbin", "casbin_rule"}},
+		{"mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", []any{"casbin", "casbin_rule"}},
 		{"postgres", "user=postgres password=postgres host=127.0.0.1 port=5432 sslmode=disable", nil},
 		// {"sqlserver", "sqlserver://sa:SqlServer123@localhost:1433", []any{"master", "casbin_rule"}},
 	}
@@ -730,9 +731,9 @@ func TestAddPolicy(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a := initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
-	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer, tx *gorm.DB) error {
 		_, err := e.AddPolicy("jack", "data1", "write")
 		if err != nil {
 			return err
@@ -748,9 +749,34 @@ func TestTransaction(t *testing.T) {
 		return
 	}
 }
+func TestTransactionRollback(t *testing.T) {
+	a := initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
+
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer, tx *gorm.DB) error {
+		_, err := e.AddPolicy("jack", "data1", "write")
+		if err != nil {
+			return err
+		}
+		return errors.New("some error")
+	})
+	if err != nil {
+		//show ：some error
+		// transaction rollback,ignore the error
+	}
+
+	hasPolicy, err := e.HasPolicy("jack", "data1", "write")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if hasPolicy {
+		t.Fatal("transaction rollback failed")
+	}
+
+}
 
 func TestTransactionRace(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a := initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 
 	concurrency := 100
@@ -759,7 +785,7 @@ func TestTransactionRace(t *testing.T) {
 	for i := 0; i < concurrency; i++ {
 		i := i
 		g.Go(func() error {
-			return e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+			return e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer, tx *gorm.DB) error {
 				_, err := e.AddPolicy("jack", fmt.Sprintf("data%d", i), "write")
 				if err != nil {
 					return err
@@ -781,7 +807,7 @@ func TestTransactionRace(t *testing.T) {
 }
 
 func TestTransactionWithSavePolicy(t *testing.T) {
-	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+	a := initAdapter(t, "mysql", "root:0ad7f65f00d91560@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
 	defer func() {
 		e.ClearPolicy()
@@ -790,7 +816,7 @@ func TestTransactionWithSavePolicy(t *testing.T) {
 			t.Fatalf("save policy err %v", err)
 		}
 	}()
-	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer) error {
+	err := e.GetAdapter().(*Adapter).Transaction(e, func(e casbin.IEnforcer, tx *gorm.DB) error {
 		_, err := e.AddPolicy("jack", "data1", "write")
 		if err != nil {
 			return err
