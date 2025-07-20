@@ -17,7 +17,6 @@ package gormadapter
 import (
 	"context"
 	"database/sql"
-	"errors"
 	"fmt"
 	"runtime"
 	"strings"
@@ -27,6 +26,7 @@ import (
 	"github.com/casbin/casbin/v2/model"
 	"github.com/casbin/casbin/v2/persist"
 	"github.com/glebarez/sqlite"
+	"github.com/pkg/errors"
 	"gorm.io/driver/mysql"
 	"gorm.io/driver/postgres"
 	"gorm.io/driver/sqlserver"
@@ -703,31 +703,61 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 			}
 		})
 	}
+
+	// check adapter type
+	adapter, ok := e.GetAdapter().(*Adapter)
+	if !ok {
+		return errors.New("expected adapter of type Adapter, but got incompatible type")
+	}
+
+	// check if we're already in a transaction by checking if the current adapter is a transaction adapter
+	if _, isTxAdapter := adapter.db.Statement.ConnPool.(*sql.Tx); isTxAdapter {
+		// we're already in a transaction, just execute the function directly
+		return fc(e)
+	}
+
 	// lock the transactionMu to ensure the transaction is thread-safe
 	a.transactionMu.Lock()
 	defer a.transactionMu.Unlock()
-	var err error
-	// reload policy from database to sync with the transaction
-	defer func() {
-		e.SetAdapter(a.Copy())
-		err = e.LoadPolicy()
+
+	// save original adapter
+	originalAdapter := adapter.Copy()
+
+	// use GORM transaction functionality
+	err := adapter.db.Transaction(func(tx *gorm.DB) error {
+		// create transaction adapter
+		txAdapter, err := NewAdapterByDB(tx)
 		if err != nil {
-			panic(err)
+			return errors.Wrap(err, "failed to initialize gorm adapter")
 		}
-	}()
-	copyDB := *a.db
-	tx := copyDB.Begin(opts...)
-	b := a.Copy()
-	// copy enforcer to set the new adapter with transaction tx
-	copyEnforcer := e
-	copyEnforcer.SetAdapter(b)
-	err = fc(copyEnforcer)
+
+		// temporarily set transaction adapter
+		e.SetAdapter(txAdapter)
+
+		// execute transaction function
+		err = fc(e)
+		if err != nil {
+			return errors.Wrap(err, "failed transactional policy operations")
+		}
+
+		return nil
+	}, opts...)
+
+	// restore original adapter
+	e.SetAdapter(originalAdapter)
+
 	if err != nil {
-		tx.Rollback()
-		return err
+		// LoadPolicy is called only when the transaction encounters an error and fails.
+		// While this operation is expensive, failures are rare due to validation at earlier layers.
+		// When a transaction fails, the in-memory model may be out of sync, so LoadPolicy is needed
+		// to restore consistency by reloading from the database.
+		if loadErr := e.LoadPolicy(); loadErr != nil {
+			return errors.Wrap(loadErr, "failed to load policy after transaction failure")
+		}
+		return errors.Wrap(err, "transaction execution failed")
 	}
-	err = tx.Commit().Error
-	return err
+
+	return nil
 }
 
 // RemovePolicies removes multiple policy rules from the storage.

@@ -34,6 +34,7 @@ require (
 	github.com/kr/text v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/microsoft/go-mssqldb v1.6.0 // indirect
+	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230126093431-47fa9a501578 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
