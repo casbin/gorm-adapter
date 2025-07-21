@@ -730,13 +730,8 @@ func TestAddPolicy(t *testing.T) {
 }
 
 func TestTransaction(t *testing.T) {
-	// create in-memory database
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	assert.NoError(t, err)
-
-	// create adapter
-	adapter, err := NewAdapterByDB(db)
-	assert.NoError(t, err)
+	// create adapter using the same pattern as other tests
+	adapter := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 
 	// create enforcer
 	enforcer, err := casbin.NewEnforcer("examples/rbac_model.conf", adapter)
@@ -748,7 +743,11 @@ func TestTransaction(t *testing.T) {
 
 	// test 1: basic transaction operation
 	t.Run("Basic Transaction", func(t *testing.T) {
-		err := adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
 			_, err := e.AddPolicy("alice", "data1", "read")
 			if err != nil {
 				return err
@@ -767,7 +766,11 @@ func TestTransaction(t *testing.T) {
 
 	// test 2: transaction rollback
 	t.Run("Transaction Rollback", func(t *testing.T) {
-		err := adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
 			_, err := e.AddPolicy("bob", "data3", "read")
 			if err != nil {
 				return err
@@ -782,9 +785,13 @@ func TestTransaction(t *testing.T) {
 		assert.False(t, ok)
 	})
 
-	// test 3: nested transaction
-	t.Run("Nested Transaction", func(t *testing.T) {
-		err := adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+	// test 3: nested transaction - inner success, outer success
+	t.Run("Nested Transaction - Inner Success Outer Success", func(t *testing.T) {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
 			// outer transaction
 			_, err := e.AddPolicy("charlie", "data4", "read")
 			if err != nil {
@@ -812,7 +819,144 @@ func TestTransaction(t *testing.T) {
 		assert.True(t, ok)
 	})
 
-	// test 4: adapter type check
+	// test 4: nested transaction - inner rollback, outer success
+	t.Run("Nested Transaction - Inner Rollback Outer Success", func(t *testing.T) {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+			// outer transaction
+			_, err := e.AddPolicy("david", "data7", "read")
+			if err != nil {
+				return err
+			}
+
+			// nested transaction that fails
+			err = adapter.Transaction(e, func(innerE casbin.IEnforcer) error {
+				_, err := innerE.AddPolicy("david", "data8", "write")
+				if err != nil {
+					return err
+				}
+				// inner transaction fails
+				return assert.AnError
+			})
+			if err != nil {
+				// inner transaction failed, but outer transaction should continue
+				// the savepoint rollback has already undone the inner transaction changes
+				return err
+			}
+
+			// outer transaction continues despite inner failure
+			_, err = e.AddPolicy("david", "data9", "execute")
+			return err
+		})
+		assert.NoError(t, err)
+
+		// verify outer transaction policies are committed
+		ok, _ := enforcer.Enforce("david", "data7", "read")
+		assert.True(t, ok, "Outer transaction policy should be committed")
+		ok, _ = enforcer.Enforce("david", "data9", "execute")
+		assert.True(t, ok, "Outer transaction policy should be committed")
+
+		// verify inner transaction policies are rolled back (savepoint behavior)
+		ok, _ = enforcer.Enforce("david", "data8", "write")
+		assert.False(t, ok, "Inner transaction policy should be rolled back due to savepoint")
+	})
+
+	// test 5: nested transaction - inner success, outer rollback
+	t.Run("Nested Transaction - Inner Success Outer Rollback", func(t *testing.T) {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+			// outer transaction
+			_, err := e.AddPolicy("eve", "data10", "read")
+			if err != nil {
+				return err
+			}
+
+			// nested transaction that succeeds
+			err = adapter.Transaction(e, func(innerE casbin.IEnforcer) error {
+				_, err := innerE.AddPolicy("eve", "data11", "write")
+				if err != nil {
+					return err
+				}
+				_, err = innerE.AddPolicy("eve", "data12", "delete")
+				return err
+			})
+			if err != nil {
+				// inner transaction failed, but outer transaction should continue
+				// the savepoint rollback has already undone the inner transaction changes
+				return err
+			}
+
+			// outer transaction continues despite inner failure
+			_, err = e.AddPolicy("eve", "data13", "execute")
+			if err != nil {
+				return err
+			}
+			// outer transaction fails
+			return assert.AnError
+		})
+		assert.Error(t, err)
+
+		// verify all policies are rolled back (both outer and inner)
+		ok, _ := enforcer.Enforce("eve", "data10", "read")
+		assert.False(t, ok)
+		ok, _ = enforcer.Enforce("eve", "data11", "write")
+		assert.False(t, ok)
+		ok, _ = enforcer.Enforce("eve", "data12", "delete")
+		assert.False(t, ok)
+	})
+
+	// test 6: deeply nested transactions
+	t.Run("Deeply Nested Transactions", func(t *testing.T) {
+		// reload policy for clean state
+		err := enforcer.LoadPolicy()
+		assert.NoError(t, err)
+
+		err = adapter.Transaction(enforcer, func(e casbin.IEnforcer) error {
+			// level 1
+			_, err := e.AddPolicy("frank", "data13", "read")
+			if err != nil {
+				return err
+			}
+
+			// level 2
+			err = adapter.Transaction(e, func(e2 casbin.IEnforcer) error {
+				_, err := e2.AddPolicy("frank", "data14", "write")
+				if err != nil {
+					return err
+				}
+
+				// level 3
+				return adapter.Transaction(e2, func(e3 casbin.IEnforcer) error {
+					_, err := e3.AddPolicy("frank", "data15", "delete")
+					if err != nil {
+						return err
+					}
+					_, err = e3.AddPolicy("frank", "data16", "execute")
+					return err
+				})
+			})
+			return err
+		})
+		assert.NoError(t, err)
+
+		// verify all policies
+		ok, _ := enforcer.Enforce("frank", "data13", "read")
+		assert.True(t, ok)
+		ok, _ = enforcer.Enforce("frank", "data14", "write")
+		assert.True(t, ok)
+		ok, _ = enforcer.Enforce("frank", "data15", "delete")
+		assert.True(t, ok)
+		ok, _ = enforcer.Enforce("frank", "data16", "execute")
+		assert.True(t, ok)
+	})
+
+	// test 7: adapter type check
 	t.Run("Adapter Type Check", func(t *testing.T) {
 		// create an incompatible adapter
 		mockEnforcer, _ := casbin.NewEnforcer("examples/rbac_model.conf")
@@ -826,13 +970,8 @@ func TestTransaction(t *testing.T) {
 }
 
 func TestTransactionRace(t *testing.T) {
-	// create in-memory database for testing
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	// create adapter
-	a, err := NewAdapterByDB(db)
-	require.NoError(t, err)
+	// create adapter using the same pattern as other tests
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 
 	// create enforcer
 	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
@@ -870,13 +1009,8 @@ func TestTransactionRace(t *testing.T) {
 }
 
 func TestTransactionWithSavePolicy(t *testing.T) {
-	// create in-memory database for testing
-	db, err := gorm.Open(sqlite.Open(":memory:"), &gorm.Config{})
-	require.NoError(t, err)
-
-	// create adapter
-	a, err := NewAdapterByDB(db)
-	require.NoError(t, err)
+	// create adapter using the same pattern as other tests
+	a := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
 
 	// create enforcer
 	e, err := casbin.NewEnforcer("examples/rbac_model.conf", a)
