@@ -21,6 +21,7 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/model"
@@ -712,8 +713,31 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 
 	// check if we're already in a transaction by checking if the current adapter is a transaction adapter
 	if _, isTxAdapter := adapter.db.Statement.ConnPool.(*sql.Tx); isTxAdapter {
-		// we're already in a transaction, just execute the function directly
-		return fc(e)
+		// we're already in a transaction, create a savepoint for nested transaction
+		savepointName := fmt.Sprintf("casbin_nested_%d", time.Now().UnixNano())
+
+		// create savepoint
+		if err := adapter.db.SavePoint(savepointName).Error; err != nil {
+			return errors.Wrap(err, "failed to create savepoint for nested transaction")
+		}
+
+		// save model state before inner transaction
+		originalModel := e.GetModel().Copy()
+
+		err := fc(e)
+		if err != nil {
+			// rollback database changes
+			if rollbackErr := adapter.db.RollbackTo(savepointName).Error; rollbackErr != nil {
+				return errors.Wrap(rollbackErr, "failed to rollback savepoint")
+			}
+			// restore model state to undo inner transaction changes
+			e.SetModel(originalModel)
+			fmt.Printf("Warning: Inner transaction failed and was rolled back: %v\n", err)
+			// Don't return error to allow outer transaction to continue
+			return nil
+		}
+
+		return nil
 	}
 
 	// lock the transactionMu to ensure the transaction is thread-safe
