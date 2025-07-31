@@ -7,6 +7,7 @@ require (
 	github.com/glebarez/sqlite v1.7.0
 	github.com/go-sql-driver/mysql v1.7.0
 	github.com/lib/pq v1.10.2
+	github.com/pkg/errors v0.9.1
 	github.com/stretchr/testify v1.8.4
 	golang.org/x/sync v0.9.0
 	gorm.io/driver/mysql v1.5.7
@@ -34,7 +35,6 @@ require (
 	github.com/kr/text v0.1.0 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/microsoft/go-mssqldb v1.6.0 // indirect
-	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230126093431-47fa9a501578 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
