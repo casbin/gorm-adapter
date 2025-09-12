@@ -276,6 +276,18 @@ func NewAdapterByDB(db *gorm.DB) (*Adapter, error) {
 	return NewAdapterByDBUseTableName(db, "", defaultTableName)
 }
 
+// NewTransactionalAdapter creates a new adapter that supports the new transaction interface.
+// This is an alias for NewAdapter for clarity when using with TransactionalEnforcer.
+func NewTransactionalAdapter(driverName string, dataSourceName string, params ...interface{}) (*Adapter, error) {
+	return NewAdapter(driverName, dataSourceName, params...)
+}
+
+// NewTransactionalAdapterByDB creates a new adapter by existing DB that supports the new transaction interface.
+// This is an alias for NewAdapterByDB for clarity when using with TransactionalEnforcer.
+func NewTransactionalAdapterByDB(db *gorm.DB) (*Adapter, error) {
+	return NewAdapterByDB(db)
+}
+
 func TurnOffAutoMigrate(db *gorm.DB) {
 	ctx := db.Statement.Context
 	if ctx == nil {
@@ -694,7 +706,7 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 	return a.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error
 }
 
-// Transaction perform a set of operations within a transaction
+// Transaction perform a set of operations within a transaction.
 func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) error, opts ...*sql.TxOptions) error {
 	// ensure the transactionMu is initialized
 	if a.transactionMu == nil {
@@ -782,6 +794,76 @@ func (a *Adapter) Transaction(e casbin.IEnforcer, fc func(casbin.IEnforcer) erro
 	}
 
 	return nil
+}
+
+// BeginTransaction implements TransactionalAdapter interface.
+// It starts a new database transaction and returns a TransactionContext.
+func (a *Adapter) BeginTransaction(ctx context.Context) (persist.TransactionContext, error) {
+	// Start GORM database transaction
+	tx := a.db.WithContext(ctx).Begin()
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &GormTransactionContext{
+		tx:        tx,
+		ctx:       ctx,
+		adapter:   a,
+		tableName: a.tableName,
+	}, nil
+}
+
+// GormTransactionContext implements persist.TransactionContext interface.
+// It provides transaction control methods and returns a transaction-aware adapter.
+type GormTransactionContext struct {
+	tx         *gorm.DB
+	ctx        context.Context
+	adapter    *Adapter
+	tableName  string
+	committed  bool
+	rolledBack bool
+}
+
+// Commit commits the database transaction.
+func (gtx *GormTransactionContext) Commit() error {
+	if gtx.committed || gtx.rolledBack {
+		return errors.New("transaction already finished")
+	}
+
+	err := gtx.tx.Commit().Error
+	if err == nil {
+		gtx.committed = true
+	}
+	return err
+}
+
+// Rollback rolls back the database transaction.
+func (gtx *GormTransactionContext) Rollback() error {
+	if gtx.committed || gtx.rolledBack {
+		return errors.New("transaction already finished")
+	}
+
+	err := gtx.tx.Rollback().Error
+	if err == nil {
+		gtx.rolledBack = true
+	}
+	return err
+}
+
+// GetAdapter returns an adapter that operates within this transaction.
+// All policy operations through this adapter will be part of the transaction.
+func (gtx *GormTransactionContext) GetAdapter() persist.Adapter {
+	return &Adapter{
+		driverName:     gtx.adapter.driverName,
+		dataSourceName: gtx.adapter.dataSourceName,
+		databaseName:   gtx.adapter.databaseName,
+		tablePrefix:    gtx.adapter.tablePrefix,
+		tableName:      gtx.tableName,
+		dbSpecified:    gtx.adapter.dbSpecified,
+		db:             gtx.tx, // Use transaction connection
+		isFiltered:     gtx.adapter.isFiltered,
+		// Note: No transactionMu needed as each transaction has its own adapter
+	}
 }
 
 // RemovePolicies removes multiple policy rules from the storage.

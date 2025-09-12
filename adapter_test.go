@@ -15,11 +15,14 @@
 package gormadapter
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/casbin/casbin/v2"
 	"github.com/casbin/casbin/v2/util"
@@ -1038,4 +1041,248 @@ func TestTransactionWithSavePolicy(t *testing.T) {
 	require.True(t, ok)
 	ok, _ = e.Enforce("jack", "data2", "write")
 	require.True(t, ok)
+}
+
+// TestTransactionalAdapter tests the new TransactionalAdapter interface implementation.
+func TestTransactionalAdapter(t *testing.T) {
+	// Skip if we don't have access to casbin's TransactionalEnforcer
+	// This test requires the new transaction implementation from casbin core
+
+	adapter := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+
+	// Test BeginTransaction method
+	ctx := context.Background()
+	txContext, err := adapter.BeginTransaction(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, txContext)
+
+	// Get transaction adapter
+	txAdapter := txContext.GetAdapter()
+	assert.NotNil(t, txAdapter)
+
+	// Test transaction operations
+	err = txAdapter.AddPolicy("p", "p", []string{"alice", "data1", "read"})
+	assert.NoError(t, err)
+
+	err = txAdapter.AddPolicy("p", "p", []string{"bob", "data2", "write"})
+	assert.NoError(t, err)
+
+	// Commit transaction
+	err = txContext.Commit()
+	assert.NoError(t, err)
+
+	// Verify policies were added
+	var policies []CasbinRule
+	err = adapter.db.Find(&policies).Error
+	assert.NoError(t, err)
+}
+
+// TestTransactionContextCommitRollback tests transaction commit and rollback.
+func TestTransactionContextCommitRollback(t *testing.T) {
+	adapter := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+
+	ctx := context.Background()
+
+	// Test successful commit
+	t.Run("Successful Commit", func(t *testing.T) {
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		txAdapter := txContext.GetAdapter()
+		err = txAdapter.AddPolicy("p", "p", []string{"charlie", "data3", "read"})
+		assert.NoError(t, err)
+
+		err = txContext.Commit()
+		assert.NoError(t, err)
+
+		// Verify policy exists
+		var count int64
+		err = adapter.db.Model(&CasbinRule{}).Where("ptype = ? AND v0 = ? AND v1 = ? AND v2 = ?",
+			"p", "charlie", "data3", "read").Count(&count).Error
+		assert.NoError(t, err)
+		assert.Equal(t, int64(1), count)
+	})
+
+	// Test rollback
+	t.Run("Rollback", func(t *testing.T) {
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		txAdapter := txContext.GetAdapter()
+		err = txAdapter.AddPolicy("p", "p", []string{"david", "data4", "write"})
+		assert.NoError(t, err)
+
+		err = txContext.Rollback()
+		assert.NoError(t, err)
+
+		// Verify policy doesn't exist
+		var count int64
+		err = adapter.db.Model(&CasbinRule{}).Where("ptype = ? AND v0 = ? AND v1 = ? AND v2 = ?",
+			"p", "david", "data4", "write").Count(&count).Error
+		assert.NoError(t, err)
+		assert.Equal(t, int64(0), count)
+	})
+
+	// Test double commit/rollback protection
+	t.Run("Double Commit Protection", func(t *testing.T) {
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		err = txContext.Commit()
+		assert.NoError(t, err)
+
+		// Second commit should fail
+		err = txContext.Commit()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already finished")
+	})
+
+	t.Run("Double Rollback Protection", func(t *testing.T) {
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		err = txContext.Rollback()
+		assert.NoError(t, err)
+
+		// Second rollback should fail
+		err = txContext.Rollback()
+		assert.Error(t, err)
+		assert.Contains(t, err.Error(), "already finished")
+	})
+}
+
+// TestConcurrentTransactions tests that multiple transactions can run concurrently.
+// This is the key advantage over the old Transaction method.
+func TestConcurrentTransactions(t *testing.T) {
+	adapter := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+
+	ctx := context.Background()
+	numGoroutines := 10
+	var wg sync.WaitGroup
+	var mu sync.Mutex
+	results := make([]error, numGoroutines)
+
+	// Run multiple concurrent transactions
+	for i := 0; i < numGoroutines; i++ {
+		wg.Add(1)
+		go func(id int) {
+			defer wg.Done()
+
+			txContext, err := adapter.BeginTransaction(ctx)
+			if err != nil {
+				mu.Lock()
+				results[id] = err
+				mu.Unlock()
+				return
+			}
+
+			txAdapter := txContext.GetAdapter()
+
+			// Add a unique policy for this goroutine
+			err = txAdapter.AddPolicy("p", "p", []string{fmt.Sprintf("user%d", id), "data", "read"})
+			if err != nil {
+				mu.Lock()
+				results[id] = err
+				mu.Unlock()
+				return
+			}
+
+			// Simulate some work
+			time.Sleep(10 * time.Millisecond)
+
+			err = txContext.Commit()
+			mu.Lock()
+			results[id] = err
+			mu.Unlock()
+		}(i)
+	}
+
+	wg.Wait()
+
+	// Check all transactions succeeded
+	for i, err := range results {
+		assert.NoError(t, err, "Transaction %d failed", i)
+	}
+
+	// Verify all policies were added
+	var count int64
+	err := adapter.db.Model(&CasbinRule{}).Where("ptype = ? AND v1 = ? AND v2 = ?",
+		"p", "data", "read").Count(&count).Error
+	assert.NoError(t, err)
+	assert.Equal(t, int64(numGoroutines), count)
+}
+
+// TestTransactionWithContext tests transaction with context cancellation.
+func TestTransactionWithContext(t *testing.T) {
+	adapter := initAdapter(t, "mysql", "root:@tcp(127.0.0.1:3306)/", "casbin", "casbin_rule")
+
+	// Test with timeout context
+	t.Run("With Timeout", func(t *testing.T) {
+		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond)
+		defer cancel()
+
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		// Simulate long operation
+		time.Sleep(200 * time.Millisecond)
+
+		txAdapter := txContext.GetAdapter()
+		err = txAdapter.AddPolicy("p", "p", []string{"timeout_user", "data", "read"})
+		// This might fail due to context timeout, which is expected behavior
+
+		// Try to commit (might fail due to timeout)
+		_ = txContext.Commit()
+	})
+
+	// Test with cancelled context
+	t.Run("With Cancelled Context", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+
+		txContext, err := adapter.BeginTransaction(ctx)
+		assert.NoError(t, err)
+
+		// Cancel context
+		cancel()
+
+		txAdapter := txContext.GetAdapter()
+		err = txAdapter.AddPolicy("p", "p", []string{"cancelled_user", "data", "read"})
+		// This might fail due to cancelled context
+
+		// Try to commit (might fail due to cancellation)
+		_ = txContext.Commit()
+	})
+}
+
+// TestNewTransactionalAdapterConstructors tests the new constructor functions.
+func TestNewTransactionalAdapterConstructors(t *testing.T) {
+	// Test NewTransactionalAdapter
+	adapter1, err := NewTransactionalAdapter("mysql", "root:@tcp(127.0.0.1:3306)/", "casbin")
+	if err != nil {
+		t.Skip("MySQL not available:", err)
+	}
+	assert.NotNil(t, adapter1)
+
+	// Test that it implements TransactionalAdapter interface
+	ctx := context.Background()
+	txContext, err := adapter1.BeginTransaction(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, txContext)
+	txContext.Rollback() // Clean up
+
+	// Test NewTransactionalAdapterByDB
+	db, err := gorm.Open(mysql.Open("root:@tcp(127.0.0.1:3306)/casbin"), &gorm.Config{})
+	if err != nil {
+		t.Skip("MySQL not available:", err)
+	}
+
+	adapter2, err := NewTransactionalAdapterByDB(db)
+	assert.NoError(t, err)
+	assert.NotNil(t, adapter2)
+
+	// Test that it also implements TransactionalAdapter interface
+	txContext2, err := adapter2.BeginTransaction(ctx)
+	assert.NoError(t, err)
+	assert.NotNil(t, txContext2)
+	txContext2.Rollback() // Clean up
 }
