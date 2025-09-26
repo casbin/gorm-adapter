@@ -125,7 +125,9 @@ func main() {
 }
 ```
 ## Transaction
+
 You can modify policies within a transaction. See the example below:
+
 ```go
 // The new implementation uses a two-phase commit protocol and supports multi-threaded environments.
 
