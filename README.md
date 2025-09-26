@@ -125,8 +125,40 @@ func main() {
 }
 ```
 ## Transaction
-You can modify policies within a transaction.See example:
+
+You can modify policies within a transaction. See the example below:
+
 ```go
+// The new implementation uses a two-phase commit protocol and supports multi-threaded environments.
+
+package main
+
+func main() {
+	adapter, _ := gormadapter.NewTransactionalAdapterByDB(db)
+	e, _ := casbin.NewTransactionalEnforcer("examples/rbac_model.conf", adapter)
+
+	ctx := context.Background()
+
+	// WithTransaction executes a function within a transaction.
+	// If the function returns an error, the transaction is rolled back.
+	// Otherwise, it's committed automatically.
+    err := e.WithTransaction(ctx, func(tx *casbin.Transaction) error {
+		tx.AddPolicy("alice", "data1", "read")
+		tx.AddPolicy("alice", "data1", "write")
+		return nil
+	})
+
+	// If you wish to manually handle the transaction
+	tx, _ := e.BeginTransaction(ctx)
+	tx.AddPolicy("alice", "data1", "write")
+	if err := tx.Commit(); err != nil {
+		// handle if transaction failed
+	}
+}
+```
+
+```go
+// old verion
 package main
 
 func main() {
