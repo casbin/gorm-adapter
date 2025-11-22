@@ -408,7 +408,7 @@ func NewConfigWithoutSlowQueryLog() *gorm.Config {
 func openDBConnection(driverName, dataSourceName string, config ...*gorm.Config) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
-	
+
 	// Use provided config or default
 	var cfg *gorm.Config
 	if len(config) > 0 && config[0] != nil {
@@ -416,7 +416,7 @@ func openDBConnection(driverName, dataSourceName string, config ...*gorm.Config)
 	} else {
 		cfg = &gorm.Config{}
 	}
-	
+
 	if driverName == "postgres" {
 		db, err = gorm.Open(postgres.Open(dataSourceName), cfg)
 	} else if driverName == "mysql" {
