@@ -119,6 +119,59 @@ func (dbPool *DbPool) switchDb(dbName string) *gorm.DB {
 	return dbPool.source.Clauses(dbresolver.Write)
 }
 
+// parseAdapterParams parses the optional parameters for adapter constructors.
+// It sets the databaseName, tableName, and dbSpecified fields on the adapter.
+func parseAdapterParams(a *Adapter, params ...interface{}) error {
+	if len(params) == 1 {
+		switch p1 := params[0].(type) {
+		case bool:
+			a.dbSpecified = p1
+		case string:
+			a.databaseName = p1
+		default:
+			return errors.New("wrong format")
+		}
+	} else if len(params) == 2 {
+		switch p2 := params[1].(type) {
+		case bool:
+			a.dbSpecified = p2
+			p1, ok := params[0].(string)
+			if !ok {
+				return errors.New("wrong format")
+			}
+			a.databaseName = p1
+		case string:
+			p1, ok := params[0].(string)
+			if !ok {
+				return errors.New("wrong format")
+			}
+			a.databaseName = p1
+			a.tableName = p2
+		default:
+			return errors.New("wrong format")
+		}
+	} else if len(params) == 3 {
+		p3, ok := params[2].(bool)
+		if !ok {
+			return errors.New("wrong format")
+		}
+		p1, ok := params[0].(string)
+		if !ok {
+			return errors.New("wrong format")
+		}
+		p2, ok := params[1].(string)
+		if !ok {
+			return errors.New("wrong format")
+		}
+		a.dbSpecified = p3
+		a.databaseName = p1
+		a.tableName = p2
+	} else if len(params) != 0 {
+		return errors.New("too many parameters")
+	}
+	return nil
+}
+
 // NewAdapter is the constructor for Adapter.
 // Params : databaseName,tableName,dbSpecified
 //
@@ -142,48 +195,13 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	a.dbSpecified = false
 	a.transactionMu = &sync.Mutex{}
 
-	if len(params) == 1 {
-		switch p1 := params[0].(type) {
-		case bool:
-			a.dbSpecified = p1
-		case string:
-			a.databaseName = p1
-		default:
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) == 2 {
-		switch p2 := params[1].(type) {
-		case bool:
-			a.dbSpecified = p2
-			p1, ok := params[0].(string)
-			if !ok {
-				return nil, errors.New("wrong format")
-			}
-			a.databaseName = p1
-		case string:
-			p1, ok := params[0].(string)
-			if !ok {
-				return nil, errors.New("wrong format")
-			}
-			a.databaseName = p1
-			a.tableName = p2
-		default:
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) == 3 {
-		if p3, ok := params[2].(bool); ok {
-			a.dbSpecified = p3
-			a.databaseName = params[0].(string)
-			a.tableName = params[1].(string)
-		} else {
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) != 0 {
-		return nil, errors.New("too many parameters")
+	err := parseAdapterParams(a, params...)
+	if err != nil {
+		return nil, err
 	}
 
 	// Open the DB, create it if not existed.
-	err := a.Open()
+	err = a.Open()
 	if err != nil {
 		return nil, err
 	}
@@ -218,48 +236,13 @@ func NewAdapterWithConfig(driverName string, dataSourceName string, config *gorm
 	a.dbSpecified = false
 	a.transactionMu = &sync.Mutex{}
 
-	if len(params) == 1 {
-		switch p1 := params[0].(type) {
-		case bool:
-			a.dbSpecified = p1
-		case string:
-			a.databaseName = p1
-		default:
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) == 2 {
-		switch p2 := params[1].(type) {
-		case bool:
-			a.dbSpecified = p2
-			p1, ok := params[0].(string)
-			if !ok {
-				return nil, errors.New("wrong format")
-			}
-			a.databaseName = p1
-		case string:
-			p1, ok := params[0].(string)
-			if !ok {
-				return nil, errors.New("wrong format")
-			}
-			a.databaseName = p1
-			a.tableName = p2
-		default:
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) == 3 {
-		if p3, ok := params[2].(bool); ok {
-			a.dbSpecified = p3
-			a.databaseName = params[0].(string)
-			a.tableName = params[1].(string)
-		} else {
-			return nil, errors.New("wrong format")
-		}
-	} else if len(params) != 0 {
-		return nil, errors.New("too many parameters")
+	err := parseAdapterParams(a, params...)
+	if err != nil {
+		return nil, err
 	}
 
 	// Open the DB, create it if not existed.
-	err := a.Open()
+	err = a.Open()
 	if err != nil {
 		return nil, err
 	}
