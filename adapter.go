@@ -214,7 +214,12 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 
 // NewAdapterWithConfig is the constructor for Adapter with custom gorm.Config.
 // This allows you to customize GORM behavior, including disabling slow query logging.
-// Params are the same as NewAdapter, with an additional config parameter.
+//
+// Parameters:
+//   - driverName: Database driver name (e.g., "mysql", "postgres", "sqlite3", "sqlserver")
+//   - dataSourceName: Database connection string
+//   - config: Custom gorm.Config (use NewConfigWithoutSlowQueryLog() to disable slow query logging)
+//   - params: Optional parameters same as NewAdapter (databaseName, tableName, dbSpecified)
 //
 // Example usage to disable slow query logging:
 //
