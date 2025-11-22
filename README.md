@@ -79,58 +79,6 @@ TurnOffAutoMigrate(db)
 a,_ := NewAdapterByDBWithCustomTable(...)
 ```
 Find out more details at [gorm-adapter#162](https://github.com/casbin/gorm-adapter/issues/162)
-
-## Disable Slow Query Logging
-
-By default, GORM logs slow queries (queries taking more than 200ms). To disable this logging, you can use `NewAdapterWithConfig` with a custom logger configuration:
-
-```go
-package main
-
-import (
-	"github.com/casbin/casbin/v2"
-	gormadapter "github.com/casbin/gorm-adapter/v3"
-)
-
-func main() {
-	// Create a config without slow query logging
-	config := gormadapter.NewConfigWithoutSlowQueryLog()
-	
-	// Initialize adapter with the config
-	a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config)
-	e, _ := casbin.NewEnforcer("examples/rbac_model.conf", a)
-	
-	// Load the policy from DB - no slow query logs will be printed
-	e.LoadPolicy()
-	
-	// Check the permission
-	e.Enforce("alice", "data1", "read")
-}
-```
-
-You can also use `NewAdapterWithConfig` with database name and table name parameters, just like `NewAdapter`:
-
-```go
-config := gormadapter.NewConfigWithoutSlowQueryLog()
-// With database name
-a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config, "casbin")
-// With database name and table name
-a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config, "casbin", "casbin_rule")
-```
-
-If you need more control over the logger, you can also create a custom `gorm.Config`:
-
-```go
-import "gorm.io/gorm/logger"
-
-config := &gorm.Config{
-	Logger: logger.Default.LogMode(logger.Silent), // Completely silent
-	// Or use logger.Error to only show errors:
-	// Logger: logger.Default.LogMode(logger.Error),
-}
-a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config)
-```
-
 ## Customize table columns example
 You can change the gorm struct tags, but the table structure must stay the same.
 ```go
