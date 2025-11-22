@@ -319,7 +319,7 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
 	config := &gorm.Config{
-		Logger: logger.Discard,
+		Logger: logger.Default.LogMode(logger.Silent),
 	}
 	if driverName == "postgres" {
 		db, err = gorm.Open(postgres.Open(dataSourceName), config)
