@@ -318,14 +318,17 @@ func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...stri
 func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
+	config := &gorm.Config{
+		Logger: logger.Discard,
+	}
 	if driverName == "postgres" {
-		db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(postgres.Open(dataSourceName), config)
 	} else if driverName == "mysql" {
-		db, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(mysql.Open(dataSourceName), config)
 	} else if driverName == "sqlserver" {
-		db, err = gorm.Open(sqlserver.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(sqlserver.Open(dataSourceName), config)
 	} else if driverName == "sqlite3" {
-		db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(dataSourceName), config)
 	} else {
 		return nil, errors.New("Database dialect '" + driverName + "' is not supported. Supported databases are postgres, mysql, sqlserver and sqlite3")
 	}
