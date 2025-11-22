@@ -1286,3 +1286,67 @@ func TestNewTransactionalAdapterConstructors(t *testing.T) {
 	assert.NotNil(t, txContext2)
 	txContext2.Rollback() // Clean up
 }
+
+func TestAdapterWithConfigWithoutSlowQueryLog(t *testing.T) {
+	// Test NewConfigWithoutSlowQueryLog helper function
+	config := NewConfigWithoutSlowQueryLog()
+	assert.NotNil(t, config)
+	assert.NotNil(t, config.Logger)
+
+	// Test NewAdapterWithConfig with sqlite (no external dependencies)
+	a, err := NewAdapterWithConfig("sqlite3", "casbin_test_config.db", config)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		a.Close()
+		os.Remove("casbin_test_config.db")
+	}()
+
+	// Initialize some policy
+	e, err := casbin.NewEnforcer("examples/rbac_model.conf", "examples/rbac_policy.csv")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Save policy to DB
+	err = a.SavePolicy(e.GetModel())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Load policy from DB - this should not produce slow query logs
+	e.ClearPolicy()
+	err = a.LoadPolicy(e.GetModel())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Verify policy was loaded correctly
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
+
+	// Test with database name parameter
+	config2 := NewConfigWithoutSlowQueryLog()
+	a2, err := NewAdapterWithConfig("sqlite3", "casbin_test_config2.db", config2, "test_casbin_db")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		a2.Close()
+		os.Remove("casbin_test_config2.db")
+	}()
+
+	// Initialize and test
+	err = a2.SavePolicy(e.GetModel())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	e.ClearPolicy()
+	err = a2.LoadPolicy(e.GetModel())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	testGetPolicy(t, e, [][]string{{"alice", "data1", "read"}, {"bob", "data2", "write"}, {"data2_admin", "data2", "read"}, {"data2_admin", "data2", "write"}})
+}

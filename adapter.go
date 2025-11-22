@@ -86,6 +86,7 @@ type Adapter struct {
 	isFiltered     bool
 	transactionMu  *sync.Mutex
 	muInitialize   sync.Once
+	gormConfig     *gorm.Config
 }
 
 // finalizer is the destructor for Adapter.
@@ -135,6 +136,82 @@ func NewAdapter(driverName string, dataSourceName string, params ...interface{})
 	a := &Adapter{}
 	a.driverName = driverName
 	a.dataSourceName = dataSourceName
+
+	a.tableName = defaultTableName
+	a.databaseName = defaultDatabaseName
+	a.dbSpecified = false
+	a.transactionMu = &sync.Mutex{}
+
+	if len(params) == 1 {
+		switch p1 := params[0].(type) {
+		case bool:
+			a.dbSpecified = p1
+		case string:
+			a.databaseName = p1
+		default:
+			return nil, errors.New("wrong format")
+		}
+	} else if len(params) == 2 {
+		switch p2 := params[1].(type) {
+		case bool:
+			a.dbSpecified = p2
+			p1, ok := params[0].(string)
+			if !ok {
+				return nil, errors.New("wrong format")
+			}
+			a.databaseName = p1
+		case string:
+			p1, ok := params[0].(string)
+			if !ok {
+				return nil, errors.New("wrong format")
+			}
+			a.databaseName = p1
+			a.tableName = p2
+		default:
+			return nil, errors.New("wrong format")
+		}
+	} else if len(params) == 3 {
+		if p3, ok := params[2].(bool); ok {
+			a.dbSpecified = p3
+			a.databaseName = params[0].(string)
+			a.tableName = params[1].(string)
+		} else {
+			return nil, errors.New("wrong format")
+		}
+	} else if len(params) != 0 {
+		return nil, errors.New("too many parameters")
+	}
+
+	// Open the DB, create it if not existed.
+	err := a.Open()
+	if err != nil {
+		return nil, err
+	}
+
+	// Call the destructor when the object is released.
+	runtime.SetFinalizer(a, finalizer)
+
+	return a, nil
+}
+
+// NewAdapterWithConfig is the constructor for Adapter with custom gorm.Config.
+// This allows you to customize GORM behavior, including disabling slow query logging.
+// Params are the same as NewAdapter, with an additional config parameter.
+//
+// Example usage to disable slow query logging:
+//
+//	config := gormadapter.NewConfigWithoutSlowQueryLog()
+//	a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config)
+//
+// Or with database name:
+//
+//	config := gormadapter.NewConfigWithoutSlowQueryLog()
+//	a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config, "casbin")
+func NewAdapterWithConfig(driverName string, dataSourceName string, config *gorm.Config, params ...interface{}) (*Adapter, error) {
+	a := &Adapter{}
+	a.driverName = driverName
+	a.dataSourceName = dataSourceName
+	a.gormConfig = config
 
 	a.tableName = defaultTableName
 	a.databaseName = defaultDatabaseName
@@ -315,17 +392,39 @@ func NewAdapterByDBWithCustomTable(db *gorm.DB, t interface{}, tableName ...stri
 	return NewAdapterByDBUseTableName(db.WithContext(ctx), "", curTableName)
 }
 
-func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
+// NewConfigWithoutSlowQueryLog creates a gorm.Config with slow query logging disabled.
+// This can be used to suppress GORM's slow SQL log output.
+//
+// Example usage:
+//
+//	config := gormadapter.NewConfigWithoutSlowQueryLog()
+//	a, _ := gormadapter.NewAdapterWithConfig("mysql", "user:pass@tcp(127.0.0.1:3306)/", config)
+func NewConfigWithoutSlowQueryLog() *gorm.Config {
+	return &gorm.Config{
+		Logger: logger.Default.LogMode(logger.Silent),
+	}
+}
+
+func openDBConnection(driverName, dataSourceName string, config ...*gorm.Config) (*gorm.DB, error) {
 	var err error
 	var db *gorm.DB
+	
+	// Use provided config or default
+	var cfg *gorm.Config
+	if len(config) > 0 && config[0] != nil {
+		cfg = config[0]
+	} else {
+		cfg = &gorm.Config{}
+	}
+	
 	if driverName == "postgres" {
-		db, err = gorm.Open(postgres.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(postgres.Open(dataSourceName), cfg)
 	} else if driverName == "mysql" {
-		db, err = gorm.Open(mysql.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(mysql.Open(dataSourceName), cfg)
 	} else if driverName == "sqlserver" {
-		db, err = gorm.Open(sqlserver.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(sqlserver.Open(dataSourceName), cfg)
 	} else if driverName == "sqlite3" {
-		db, err = gorm.Open(sqlite.Open(dataSourceName), &gorm.Config{})
+		db, err = gorm.Open(sqlite.Open(dataSourceName), cfg)
 	} else {
 		return nil, errors.New("Database dialect '" + driverName + "' is not supported. Supported databases are postgres, mysql, sqlserver and sqlite3")
 	}
@@ -337,7 +436,7 @@ func openDBConnection(driverName, dataSourceName string) (*gorm.DB, error) {
 
 func (a *Adapter) createDatabase() error {
 	var err error
-	db, err := openDBConnection(a.driverName, a.dataSourceName)
+	db, err := openDBConnection(a.driverName, a.dataSourceName, a.gormConfig)
 	if err != nil {
 		return err
 	}
@@ -362,7 +461,7 @@ func (a *Adapter) Open() error {
 	var db *gorm.DB
 
 	if a.dbSpecified {
-		db, err = openDBConnection(a.driverName, a.dataSourceName)
+		db, err = openDBConnection(a.driverName, a.dataSourceName, a.gormConfig)
 		if err != nil {
 			return err
 		}
@@ -371,13 +470,13 @@ func (a *Adapter) Open() error {
 			return err
 		}
 		if a.driverName == "postgres" {
-			db, err = openDBConnection(a.driverName, a.dataSourceName+" dbname="+a.databaseName)
+			db, err = openDBConnection(a.driverName, a.dataSourceName+" dbname="+a.databaseName, a.gormConfig)
 		} else if a.driverName == "sqlite3" {
-			db, err = openDBConnection(a.driverName, a.dataSourceName)
+			db, err = openDBConnection(a.driverName, a.dataSourceName, a.gormConfig)
 		} else if a.driverName == "sqlserver" {
-			db, err = openDBConnection(a.driverName, a.dataSourceName+"?database="+a.databaseName)
+			db, err = openDBConnection(a.driverName, a.dataSourceName+"?database="+a.databaseName, a.gormConfig)
 		} else {
-			db, err = openDBConnection(a.driverName, a.dataSourceName+a.databaseName)
+			db, err = openDBConnection(a.driverName, a.dataSourceName+a.databaseName, a.gormConfig)
 		}
 		if err != nil {
 			return err
