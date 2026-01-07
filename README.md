@@ -37,7 +37,7 @@ Based on [Officially Supported Databases](https://v1.gorm.io/docs/connecting_to_
 package main
 
 import (
-	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	_ "github.com/go-sql-driver/mysql"
 )
@@ -76,7 +76,7 @@ func main() {
 package main
 
 import (
-	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	_ "github.com/lib/pq"
 )
@@ -125,7 +125,7 @@ You can change the gorm struct tags, but the table structure must stay the same.
 package main
 
 import (
-	"github.com/casbin/casbin/v2"
+	"github.com/casbin/casbin/v3"
 	gormadapter "github.com/casbin/gorm-adapter/v3"
 	"gorm.io/gorm"
 )
