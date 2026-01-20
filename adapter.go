@@ -88,6 +88,11 @@ type Adapter struct {
 	muInitialize   sync.Once
 }
 
+var (
+	_ persist.Adapter      = (*Adapter)(nil)
+	_ persist.BatchAdapter = (*Adapter)(nil)
+)
+
 // finalizer is the destructor for Adapter.
 func finalizer(a *Adapter) {
 	sqlDB, err := a.db.DB()
@@ -707,6 +712,16 @@ func (a *Adapter) AddPolicies(sec string, ptype string, rules [][]string) error 
 		lines = append(lines, line)
 	}
 	return a.db.Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error
+}
+
+// AddPoliciesCtx adds multiple policy rules to the storage.
+func (a *Adapter) AddPoliciesCtx(ctx context.Context, sec string, ptype string, rules [][]string) error {
+	var lines []CasbinRule
+	for _, rule := range rules {
+		line := a.savePolicyLine(ptype, rule)
+		lines = append(lines, line)
+	}
+	return a.db.WithContext(ctx).Clauses(clause.OnConflict{DoNothing: true}).Create(&lines).Error
 }
 
 // Transaction perform a set of operations within a transaction.
